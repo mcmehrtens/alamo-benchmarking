@@ -1,0 +1,4 @@
+[submodule "alamo"]
+	path = alamo
+	url = https://github.com/solidsgroup/alamo.git
+	branch = development

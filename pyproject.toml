@@ -1,0 +1,99 @@
+[project]
+name = "alamo-benchmarking"
+version = "0.1.0"
+description = "Cross-platform benchmarking suite for Alamo"
+requires-python = ">=3.14.5"
+dependencies = [
+    "psutil>=6.0",
+    "numpy>=2.0",
+]
+
+[project.optional-dependencies]
+render = [
+    "yt>=4.4",
+    "matplotlib>=3.9",
+]
+dev = [
+    "ruff>=0.6",
+    "pyright>=1.1",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+alamo-benchmark = "benchmarks.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["benchmarks"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["alamo", "results"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+    "N",      # pep8-naming
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie
+    "PTH",    # flake8-use-pathlib
+    "RET",    # flake8-return
+    "TID",    # flake8-tidy-imports
+    "ARG",    # flake8-unused-arguments
+    "S",      # flake8-bandit (security)
+    "ANN",    # flake8-annotations
+    "PL",     # pylint (selected rules)
+    "PERF",   # perflint
+    "DTZ",    # flake8-datetimez
+    "G",      # flake8-logging-format
+    "TRY",    # tryceratops
+    "ICN",    # flake8-import-conventions
+]
+ignore = [
+    "E501",     # line too long (formatter handles)
+    "S603",     # subprocess call - we use it deliberately for benchmark tooling
+    "S607",     # partial executable path - we resolve via PATH on purpose
+    "TRY003",   # long exception messages are fine here
+    "PLR0913",  # too many args (writers naturally have many)
+    "PLR2004",  # magic numbers (benchmarks have lots of literal config values)
+    "ANN401",   # allow Any in specific cases (sample dicts, env)
+    "TRY300",   # else after try (sometimes harms readability)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG", "S101", "ANN", "PLR2004"]
+"benchmarks/__main__.py" = ["F401"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+include = ["benchmarks"]
+exclude = ["**/__pycache__", "alamo", "results", ".venv"]
+typeCheckingMode = "strict"
+pythonVersion = "3.14"
+pythonPlatform = "All"
+reportMissingTypeStubs = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownVariableType = "warning"
+reportUnknownArgumentType = "warning"
+reportImplicitOverride = "warning"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

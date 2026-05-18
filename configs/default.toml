@@ -1,0 +1,52 @@
+# Full overnight benchmark configuration.
+#
+# Designed for the canonical run that produces results comparable across machines.
+# Override individual values via CLI flags or by passing a different config file.
+
+[run]
+mode = "full"
+output_dir = "results"
+random_seed = 0          # 0 = generate from os.urandom and record in run.config_json
+
+[statistics]
+warmup_reps = 1
+reps_short = 5           # SCP at each core count, codec encodes, frame gen
+reps_long = 3            # compile, full regression suite
+reps_noise_floor = 20
+cooldown_seconds = 30    # pause between reps to let thermals settle
+
+[preflight]
+require_ac = true
+require_governor = "performance"      # linux only
+require_macos_perf_mode = true        # High Power Mode on macOS
+max_load_1min = 0.5
+min_disk_free_gb = 50
+max_uptime_days = 14
+
+[alamo]
+build_target = "tests/SCPSpheresElastic/input"
+compiler = "clang++"
+
+[telemetry]
+sample_interval_seconds = 1
+require_sudo = true
+
+[benchmarks]
+enabled = [
+    "noise_floor",
+    "compile_serial",
+    "compile_parallel",
+    "regression_suite",
+    "scp_elastic",
+    "render",
+]
+
+[benchmarks.scp_elastic]
+# Sweep is auto-generated as 1, 2, 4, 8, ..., physical, physical + virtual.
+# Add explicit additional values here if needed.
+extra_core_counts = []
+
+[benchmarks.render]
+codecs = ["gifski", "av1", "h265"]
+frame_resolution = [1920, 1080]
+fps = 30

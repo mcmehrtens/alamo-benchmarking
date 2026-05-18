@@ -1,0 +1,46 @@
+# Smoke-test configuration.
+#
+# Runs every code path with tiny inputs and minimal reps. Use this to verify the
+# benchmark itself works on a new machine before kicking off the full overnight run.
+
+[run]
+mode = "quick"
+output_dir = "results"
+random_seed = 0
+
+[statistics]
+warmup_reps = 0
+reps_short = 1
+reps_long = 1
+reps_noise_floor = 3
+cooldown_seconds = 2
+
+[preflight]
+require_ac = false
+require_governor = "any"
+require_macos_perf_mode = false
+max_load_1min = 4.0
+min_disk_free_gb = 5
+max_uptime_days = 365
+
+[alamo]
+build_target = "tests/SCPSpheresElastic/input"
+compiler = "clang++"
+
+[telemetry]
+sample_interval_seconds = 1
+require_sudo = false      # skip the sudo-gated samplers in quick mode
+
+[benchmarks]
+enabled = [
+    "noise_floor",
+    "scp_elastic",
+]
+
+[benchmarks.scp_elastic]
+extra_core_counts = [1, 2]   # tiny sweep, ignore the auto-sweep
+
+[benchmarks.render]
+codecs = ["gifski"]
+frame_resolution = [640, 360]
+fps = 15

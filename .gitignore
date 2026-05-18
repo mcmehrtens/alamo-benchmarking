@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.python-version
+
+# uv
+.uv-cache/
+uv.lock.bak
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Per-machine artifacts (the .db and .manifest.json files ARE committed)
+results/*/logs/
+results/*/frames/
+results/*/build/
+results/*/plotfiles/
+results/*/*.png
+results/*/*.gif
+results/*/*.webm
+results/*/*.mp4
+
+# Alamo submodule build artifacts (the submodule itself is tracked)
+alamo/tmp_build_dir/
+alamo/Bin/
+alamo/build/
+alamo/*.log
