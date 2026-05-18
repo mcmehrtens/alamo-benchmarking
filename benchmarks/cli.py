@@ -25,7 +25,7 @@ from benchmarks.config import Config, load_config
 from benchmarks.preflight import PreflightReport, run_preflight
 from benchmarks.runners import RUNNERS, Benchmark, RunContext, RunSpec
 from benchmarks.storage.writer import ResultWriter
-from benchmarks.telemetry import TelemetrySidecar, make_sidecar
+from benchmarks.telemetry import make_sidecar
 
 LOG = logging.getLogger("alamo-benchmark")
 
@@ -249,19 +249,23 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
         rng = random.Random(cfg.random_seed)  # noqa: S311 - not cryptographic, reproducibility seed
         sidecar = make_sidecar(cfg.telemetry, db_path)
-        for runner_name in cfg.benchmarks.enabled:
-            runner_cls = RUNNERS.get(runner_name)
-            if runner_cls is None:
-                LOG.warning("Skipping unknown runner: %s", runner_name)
-                continue
-            runner = runner_cls()
-            specs = list(runner.specs(ctx))
-            rng.shuffle(specs)
-            LOG.info("Starting %s with %d reps", runner_name, len(specs))
-            for spec in specs:
-                _execute_spec(
-                    runner, spec, ctx, sidecar, writer, run_id, cfg.statistics.cooldown_seconds
-                )
+        sidecar.start(run_id)
+        try:
+            for runner_name in cfg.benchmarks.enabled:
+                runner_cls = RUNNERS.get(runner_name)
+                if runner_cls is None:
+                    LOG.warning("Skipping unknown runner: %s", runner_name)
+                    continue
+                runner = runner_cls()
+                specs = list(runner.specs(ctx))
+                rng.shuffle(specs)
+                LOG.info("Starting %s with %d reps", runner_name, len(specs))
+                for spec in specs:
+                    _execute_spec(
+                        runner, spec, ctx, writer, run_id, cfg.statistics.cooldown_seconds
+                    )
+        finally:
+            sidecar.stop()
         writer.finalize_run(run_id, _ts_now())
     finally:
         writer.close()
@@ -287,7 +291,6 @@ def _execute_spec(
     runner: Benchmark,
     spec: RunSpec,
     ctx: RunContext,
-    sidecar: TelemetrySidecar,
     writer: ResultWriter,
     run_id: str,
     cooldown_s: float,
@@ -299,7 +302,6 @@ def _execute_spec(
         spec.config,
         " (warmup)" if spec.is_warmup else "",
     )
-    sidecar.start(run_id)
     try:
         result = runner.run_one(spec, ctx)
     except Exception as e:
@@ -325,11 +327,7 @@ def _execute_spec(
             output_hash=None,
             notes=f"Python exception: {e!r}",
         )
-        sidecar.stop()
         return
-    finally:
-        pass
-    sidecar.stop()
 
     writer.write_result(
         result_id=uuid.uuid4().hex,

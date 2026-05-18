@@ -103,15 +103,16 @@ Runners themselves are integration-tested via `--mode quick`, which exercises th
 - SQLite + JSON manifest output under `results/<hostname>/`.
 - `noise_floor` runner — fully implemented and validated.
 - `compile_serial`, `compile_parallel`, `regression_suite`, `scp_elastic` runners — implemented, tested at the framework level (real Alamo build not yet exercised end-to-end).
+- **Telemetry sidecars:** `MacosSidecar` (`powermetrics --format plist`) and `LinuxSidecar` (`turbostat --quiet`). One sidecar per run, lifecycle managed in `_cmd_run`. Background sudo keepalive (`SudoKeepalive`). Parsers tested against real captures for M1 Pro / M4 Pro / M5 Pro and Xeon W-1370 / W5-2545 — fixtures live in `tests/fixtures/`. Telemetry-to-result join is by time range.
 - Ruff (strict ruleset) and Pyright (strict mode) both pass with zero errors/warnings.
-- Unit tests for the topology sweep generator under `tests/`.
+- Unit tests for the topology sweep generator and both telemetry parsers under `tests/`.
 - Alamo pinned as a submodule on the `development` branch.
 
 **Deliberately deferred to a follow-up:**
-- **Telemetry sidecars:** currently a `NoOpSidecar` no-op. macOS `powermetrics` and Linux `turbostat` integrations are the next priority — implementation slots are `benchmarks/telemetry/{macos,linux}.py`, with the `TelemetrySidecar` base class already in place.
 - **Rendering pipeline:** `RenderBenchmark` yields no specs. Wait for a successful end-to-end SCP run that produces plotfiles before designing the renderer.
 - **Output determinism hash on SCP runs:** `_hash_output` assumes Alamo writes to `alamo/output/`. Confirm against a real Alamo run before relying on it.
 - **MPI affinity instrumentation:** we set `OMPI_MCA_orte_report_bindings=1` but don't yet parse the resulting stderr — TODO in `scp_elastic.run_one`.
 - **Multi-node MPI:** single-node only.
 - **Aggregation CLI:** SQLite `ATTACH` is the v1 interface — see README "Aggregating across machines".
 - **Power-cap awareness on Linux:** add a pre-flight check that reads RAPL caps.
+- **End-to-end telemetry validation on a real lab machine:** parsers are fixture-verified, but the `sudo + subprocess + writer` path has only been smoke-tested locally. First overnight run on each lab box will exercise it for real.
