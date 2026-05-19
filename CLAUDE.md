@@ -55,8 +55,10 @@ All UTC, all ISO-8601, all `YYYY-MM-DDTHH:MM:SS.ffffffZ` format. Never store loc
 ### Subprocess hygiene
 Use `subprocess.run` with `check=False, capture_output=False, text=True`, and stream stdout/stderr to log files via Popen pipes — large compile/test logs should not live in memory. Path to the log file is stored in `result.stdout_path` / `result.stderr_path`.
 
-### Random seeding
+### Random seeding & rep ordering
 The within-sweep run-order shuffle uses a seeded RNG. The seed is stored in `run.config_json` so a given run is reproducible if someone wants to verify ordering effects.
+
+**Warmups always run before measured reps.** `cli._order_specs` partitions a runner's specs into `is_warmup=True` and `is_warmup=False`, shuffles each bucket independently with the same RNG, and emits warmups first. Without this carve-out a shuffle could put the warmup mid-sequence, leaving the first measured rep to pay the cold-cache / BLAS-init cost — that breaks the warmup contract. Within each bucket the shuffle still defeats drift-vs-sweep-position correlation. For multi-warmup runners (e.g. `scp_elastic` with `warmup_reps=1` and a 5-point np sweep produces 5 warmups + 5 measured per `reps_short`), the warmups themselves are shuffled so the thermal state inherited by the first measured rep isn't pinned to the last-inserted warmup spec.
 
 ### Pre-flight is observe-only
 Pre-flight checks REPORT system state and refuse to start if conditions aren't met. They do NOT mutate the system (don't flip governors, don't toggle High Power Mode, don't kill background processes). The user configures the machine themselves; pre-flight just verifies. This is explicit by user choice — don't backslide into auto-configuration even if it would be convenient.

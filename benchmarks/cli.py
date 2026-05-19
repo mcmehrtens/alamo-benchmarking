@@ -348,8 +348,7 @@ def _cmd_run_inner(
                     LOG.warning("Skipping unknown runner: %s", runner_name)
                     continue
                 runner = runner_cls()
-                specs = list(runner.specs(ctx))
-                rng.shuffle(specs)
+                specs = _order_specs(list(runner.specs(ctx)), rng)
                 LOG.info("Starting %s with %d reps", runner_name, len(specs))
                 for spec in specs:
                     _execute_spec(
@@ -376,6 +375,27 @@ def _cmd_run_inner(
     )
     LOG.info("Run complete. DB: %s", db_path)
     return 0
+
+
+def _order_specs(specs: list[RunSpec], rng: random.Random) -> list[RunSpec]:
+    """Order a runner's specs for execution.
+
+    Warmups always run BEFORE measured reps. Within each bucket the rep order
+    is shuffled — so for a runner with multi-spec warmups (e.g. scp_elastic
+    with `warmup_reps=1` and a sweep of [1, 2, 4, 8]) the four warmup specs
+    run first in shuffled order, then the four measured specs run in shuffled
+    order. This keeps the warmup contract (cold caches absorbed by reps we
+    intend to throw away) while still defeating drift-vs-sweep-position
+    correlation in the measured data.
+
+    Both buckets are shuffled with the same RNG so reordering is deterministic
+    given `[run] random_seed`.
+    """
+    warmups = [s for s in specs if s.is_warmup]
+    measured = [s for s in specs if not s.is_warmup]
+    rng.shuffle(warmups)
+    rng.shuffle(measured)
+    return warmups + measured
 
 
 def _execute_spec(

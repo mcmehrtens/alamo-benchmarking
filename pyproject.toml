@@ -70,7 +70,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ARG", "S101", "ANN", "PLR2004"]
+# S311 (random not cryptographic) is fine in tests — they're deliberately
+# constructing seeded RNGs to verify reproducibility of the production shuffle.
+"tests/*" = ["ARG", "S101", "S311", "ANN", "PLR2004"]
 "benchmarks/__main__.py" = ["F401"]
 
 [tool.ruff.lint.flake8-tidy-imports]
