@@ -95,22 +95,24 @@ def _detect_macos() -> Topology:
     is_fusion = any(marker in brand for marker in _FUSION_CHIP_MARKERS)
 
     if is_fusion:
-        # perflevel0 = super cores, perflevel1 = performance cores.
-        # Both count as physical; no virtual tier.
-        physical = perflevel0 + perflevel1
-        virtual = 0
-        reason = (
-            f"Fusion Architecture chip ({brand}): perflevel0 ({perflevel0} super) + "
-            f"perflevel1 ({perflevel1} performance) both treated as physical."
-        )
+        # perflevel0 = super cores (physical), perflevel1 = performance cores
+        # (treated as virtual - symmetric with how M1-M4 / base M5 treat their
+        # efficiency cores). The PI's preference is that ONLY the dominant
+        # core class on a chip counts as physical for the sweep; the secondary
+        # class fills the `physical + virtual` slot regardless of whether it's
+        # labeled "performance" (Fusion) or "efficiency" (everything else).
         return Topology(
-            physical=physical,
-            virtual=virtual,
+            physical=perflevel0,
+            virtual=perflevel1,
             super_cores=perflevel0,
             perf_cores=perflevel1,
             eff_cores=0,
             cpu_brand=brand,
-            classification_reason=reason,
+            classification_reason=(
+                f"Fusion Architecture chip ({brand}): {perflevel0} super cores "
+                f"treated as physical, {perflevel1} performance cores treated "
+                f"as virtual (secondary core class)."
+            ),
         )
 
     # Non-Fusion M-series: perflevel0 = performance, perflevel1 = efficiency.

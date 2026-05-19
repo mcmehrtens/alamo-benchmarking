@@ -19,13 +19,15 @@ The benchmark refuses to start `run` unless `ALAMO_BENCHMARK_MACHINE_ID` is set 
 macOS `sudo` cache expires (~5 min default). The telemetry sidecar keeps it alive via a background `sudo -v` keepalive loop. Don't assume the sudo cache is valid hours into a run — re-validate. Same applies on Linux but the default cache is sometimes longer; assume nothing.
 
 ### Apple Silicon core types
-Detect via `sysctl machdep.cpu.brand_string`, then map perflevels:
+Detect via `sysctl machdep.cpu.brand_string`, then map perflevels. The general rule: **`perflevel0` is the dominant (physical) core class, `perflevel1` is the secondary class treated as virtual**, regardless of whether the secondary class is labeled "performance" (Fusion chips) or "efficiency" (everything else). The label difference only shows up in the per-core `core_type` field that powermetrics reports.
 
-- **M5 Pro / M5 Max** (Fusion Architecture): `perflevel0 = super`, `perflevel1 = performance`. Both count as physical; no "virtual" tier. Performance cores here are designed for sustained MT throughput, not low-power background work.
-- **Base M5**: `perflevel0 = super`, `perflevel1 = efficiency`. Treat super as physical, efficiency as virtual.
-- **M1 / M2 / M3 / M4** (all variants): `perflevel0 = performance`, `perflevel1 = efficiency`. Performance is physical, efficiency is virtual.
+- **M5 Pro / M5 Max** (Fusion Architecture): `perflevel0 = super` (physical), `perflevel1 = performance` (virtual).
+- **Base M5**: `perflevel0 = super` (physical), `perflevel1 = efficiency` (virtual).
+- **M1 / M2 / M3 / M4** (all variants): `perflevel0 = performance` (physical), `perflevel1 = efficiency` (virtual).
 
-Heuristic if a future chip's brand string is unrecognized: if `perflevel1` cores have comparable L2 cache size to `perflevel0` (within ~2×), assume both are "physical-class" and warn loudly. If `perflevel1` is much smaller, it's an efficiency tier — treat as virtual.
+This makes the SCP `-np` sweep consistent across the lab fleet: every chip gets a `physical` count and a `physical + virtual` count, with the secondary tier always in the virtual slot.
+
+Heuristic if a future chip's brand string is unrecognized: classify with `perflevel0 = physical`, `perflevel1 = virtual` by default. If `perflevel1` cores have comparable L2 cache to `perflevel0` (within ~2×), warn loudly that the assumption may not match the chip's actual symmetry — but keep the default classification so the sweep stays comparable.
 
 ### MPI affinity is platform-specific
 On Linux, OpenMPI honors `--bind-to core --map-by core` and pinning is reliable — `scp_elastic.run_one` passes those flags explicitly, plus `--use-hwthread-cpus` so the topology's `physical + virtual` sweep target isn't rejected as "not enough slots" by OpenMPI 4.x's physical-cores-only slot accounting. To get the per-rank binding back into the log, the runner passes `--report-bindings` as an explicit `mpiexec` flag — the documented-but-equivalent env var `OMPI_MCA_orte_report_bindings=1` was silently ignored by OpenMPI 4.1.6 on the Xeon E3-1240v6 fixture, so we no longer rely on it (still set for older OpenMPI versions that honor it). On macOS, OpenMPI/PRRTE has no hwloc binding support and an `mpiexec` invocation that includes any of these aborts with exit 213; the runner therefore omits the flags on Darwin and accepts whatever placement the OS scheduler chooses. After the subprocess exits, `parse_mpi_bindings` extracts a structured summary (ranks bound vs unbound, distinct sockets/cores, `one_rank_per_core` flag) and `result.notes` carries a one-line readout like `affinity: bound=8/8 sockets=[0] cores=[0,1,2,3,4,5,6,7]`. The full stderr is also preserved in the per-rep log file for forensic detail.

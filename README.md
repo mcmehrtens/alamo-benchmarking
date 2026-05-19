@@ -102,13 +102,14 @@ Per-rep mechanics:
 
 Different chips disagree on what "physical" and "virtual" mean. The sweep adapts:
 
-| Platform                        | Physical                                         | Virtual                                  |
-| ------------------------------- | ------------------------------------------------ | ---------------------------------------- |
-| Intel Xeon (HT enabled)         | `sockets × cores/socket`                         | `physical × (threads/core − 1)`          |
-| Apple M5 Pro / M5 Max           | super + performance cores (both `perflevel`s)    | 0                                        |
-| Apple M1–M4, base M5            | performance cores (`perflevel0`)                 | efficiency cores (`perflevel1`)          |
+| Platform                        | Physical (`perflevel0`)              | Virtual (`perflevel1`)             |
+| ------------------------------- | ------------------------------------ | ---------------------------------- |
+| Intel Xeon (HT enabled)         | `sockets × cores/socket`             | `physical × (threads/core − 1)`    |
+| Apple M5 Pro / M5 Max           | super cores                          | performance cores                  |
+| Apple base M5                   | super cores                          | efficiency cores                   |
+| Apple M1–M4 (all variants)      | performance cores                    | efficiency cores                   |
 
-Detected from `sysctl hw.perflevel*` + `machdep.cpu.brand_string` on macOS, and `lscpu -J` on Linux. The M5 Pro/Max rule reflects Apple's Fusion Architecture, where the "performance cores" are designed for sustained multithreaded throughput rather than the low-power role of previous E-cores.
+Detected from `sysctl hw.perflevel*` + `machdep.cpu.brand_string` on macOS, and `lscpu -J` on Linux. Across the fleet the rule is uniform: the dominant core class on a chip counts as physical; the secondary tier (whether labeled "performance" on Fusion chips, "efficiency" elsewhere, or HT sibling on Xeon) fills the `physical + virtual` sweep slot. Per-core telemetry still reports the Apple-native cluster name (`super` / `performance` / `efficiency`).
 
 ## Architecture
 
