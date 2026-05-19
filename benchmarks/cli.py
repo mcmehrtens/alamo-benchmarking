@@ -99,13 +99,38 @@ def _add_config_args(p: argparse.ArgumentParser) -> None:
     )
 
 
+_LOG_FORMAT = "%(asctime)s.%(msecs)03dZ %(levelname)s %(name)s: %(message)s"
+_LOG_DATEFMT = "%Y-%m-%dT%H:%M:%S"
+
+
 def _configure_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s.%(msecs)03dZ %(levelname)s %(name)s: %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
+        format=_LOG_FORMAT,
+        datefmt=_LOG_DATEFMT,
     )
     logging.Formatter.converter = time.gmtime
+
+
+def _attach_file_logger(log_path: Path) -> logging.FileHandler:
+    """Mirror every log record to a file for post-run forensics.
+
+    Stdout is fine while watching the run, but lab machines are usually
+    headless once the overnight kicks off — the file is what gets opened
+    next morning. We also use a custom converter so the file timestamps stay
+    UTC (matches `Formatter.converter` set in `_configure_logging`).
+    """
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter(fmt=_LOG_FORMAT, datefmt=_LOG_DATEFMT))
+    logging.getLogger().addHandler(handler)
+    return handler
+
+
+def _detach_file_logger(handler: logging.FileHandler) -> None:
+    logging.getLogger().removeHandler(handler)
+    handler.close()
 
 
 # ----------------------------------------------------------- describe
@@ -115,6 +140,8 @@ def _cmd_describe(args: argparse.Namespace) -> int:
     del args
     info = pinfo.collect(Path.cwd())
     topo = topo_mod.detect_topology()
+    mid = info.machine_id or "(unset — `run` will refuse to start; see SETUP.md §4b)"
+    print(f"machine_id:     {mid}  [{info.machine_id_source}]")
     print(f"Hostname:       {info.hostname}")
     print(f"OS:             {info.os_name} {info.os_version}  ({info.arch})")
     print(f"Kernel:         {info.kernel}")
@@ -147,12 +174,22 @@ def _cmd_preflight(args: argparse.Namespace) -> int:
 
 
 def _print_preflight(report: PreflightReport) -> None:
-    print(f"Pre-flight: {'PASS' if report.passed else 'FAIL'}")
+    """Print the preflight summary to stdout and also log every line.
+
+    The user watches stdout while preflight runs; the log file captures the
+    same content for after-the-fact debugging when no one was looking.
+    """
+    summary = f"Pre-flight: {'PASS' if report.passed else 'FAIL'}"
+    print(summary)
+    LOG.info(summary)
     for check in report.checks:
         marker = "OK " if check.passed else "XX"
-        print(
-            f"  [{marker}] {check.name:<22} {check.observed:<40} (req: {check.required}, {check.severity})"
+        line = (
+            f"  [{marker}] {check.name:<22} {check.observed:<40} "
+            f"(req: {check.required}, {check.severity})"
         )
+        print(line)
+        LOG.info(line)
 
 
 # ----------------------------------------------------------- dry-run
@@ -163,7 +200,12 @@ def _cmd_dry_run(args: argparse.Namespace) -> int:
     topo = topo_mod.detect_topology()
     info = pinfo.collect(cfg.output_dir)
 
-    db_path, manifest_path = _plan_output_paths(cfg, info.hostname)
+    machine_id_for_path = info.machine_id or "UNSET-machine_id"
+    db_path, manifest_path = _plan_output_paths(cfg, machine_id_for_path, _ts_now())
+    if info.machine_id is None:
+        print(f"machine_id NOT SET ({info.machine_id_source}) — `run` would refuse to start")
+        print("                        see SETUP.md §4b to set $ALAMO_BENCHMARK_MACHINE_ID")
+        print()
     print(f"Would write DB:        {db_path}")
     print(f"Would write manifest:  {manifest_path}")
     print(f"Topology:              {topo.classification_reason}")
@@ -193,27 +235,76 @@ def _cmd_run(args: argparse.Namespace) -> int:
     info = pinfo.collect(cfg.output_dir)
     topo = topo_mod.detect_topology()
 
+    machine_id = info.machine_id
+    if machine_id is None:
+        LOG.error(
+            "machine_id not set (%s). Set $ALAMO_BENCHMARK_MACHINE_ID or write a "
+            "single line to ~/.alamo-benchmark/machine_id before running. "
+            "See SETUP.md §4b. Allowed chars: [A-Za-z0-9._-], max 64.",
+            info.machine_id_source,
+        )
+        return 2
+
+    run_id = uuid.uuid4().hex
+    started_at = _ts_now()
+    db_path, manifest_path = _plan_output_paths(cfg, machine_id, started_at)
+    run_dir = db_path.parent
+    run_dir.mkdir(parents=True, exist_ok=True)
+    file_handler = _attach_file_logger(run_dir / "alamo-benchmark.log")
+    try:
+        LOG.info("alamo-benchmark run starting")
+        LOG.info("  run_id:     %s", run_id)
+        LOG.info("  run_dir:    %s", run_dir)
+        LOG.info("  config:     %s", cfg.source_path)
+        LOG.info("  machine_id: %s  (source: %s)", machine_id, info.machine_id_source)
+        LOG.info("  hostname:   %s", info.hostname)
+        LOG.info("  topology:   %s", topo.classification_reason)
+        return _cmd_run_inner(
+            args=args,
+            cfg=cfg,
+            info=info,
+            topo=topo,
+            machine_id=machine_id,
+            run_id=run_id,
+            started_at=started_at,
+            db_path=db_path,
+            manifest_path=manifest_path,
+            run_dir=run_dir,
+        )
+    finally:
+        _detach_file_logger(file_handler)
+
+
+def _cmd_run_inner(
+    *,
+    args: argparse.Namespace,
+    cfg: Config,
+    info: pinfo.PlatformInfo,
+    topo: topo_mod.Topology,
+    machine_id: str,
+    run_id: str,
+    started_at: str,
+    db_path: Path,
+    manifest_path: Path,
+    run_dir: Path,
+) -> int:
     report = run_preflight(cfg.preflight, output_dir=cfg.output_dir)
     _print_preflight(report)
     if not report.passed and not args.force:
         LOG.error("Pre-flight failed. Use --force to override (failures still recorded).")
         return 2
 
-    run_id = uuid.uuid4().hex
-    started_at = _ts_now()
-    db_path, manifest_path = _plan_output_paths(cfg, info.hostname)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-
     bench_sha, bench_dirty = _git_sha(Path())
     alamo_sha, alamo_dirty = _git_sha(Path("alamo"))
 
-    ctx = _build_context(cfg, topo, info, run_id=run_id, run_dir=db_path.parent)
+    ctx = _build_context(cfg, topo, info, run_id=run_id, run_dir=run_dir)
     ctx.log_dir.mkdir(parents=True, exist_ok=True)
 
     writer = ResultWriter(db_path)
     try:
         writer.write_run(
             run_id=run_id,
+            machine_id=machine_id,
             hostname=info.hostname,
             started_at=started_at,
             benchmark_repo_sha=bench_sha,
@@ -376,7 +467,8 @@ def _build_context(
     run_dir: Path | None = None,
 ) -> RunContext:
     if run_dir is None:
-        run_dir = cfg.output_dir / info.hostname / f"run_{_ts_for_path(_ts_now())}"
+        machine_id_for_path = info.machine_id or "UNSET-machine_id"
+        run_dir = cfg.output_dir / machine_id_for_path / f"run_{_ts_for_path(_ts_now())}"
     log_dir = run_dir / "logs"
     return RunContext(
         config=cfg,
@@ -389,11 +481,21 @@ def _build_context(
     )
 
 
-def _plan_output_paths(cfg: Config, hostname: str) -> tuple[Path, Path]:
-    ts = _ts_for_path(_ts_now())
-    host_dir = cfg.output_dir / hostname
-    db_path = host_dir / f"run_{ts}.db"
-    manifest_path = host_dir / f"run_{ts}.manifest.json"
+def _plan_output_paths(cfg: Config, machine_id: str, started_at: str) -> tuple[Path, Path]:
+    """Derive the run's DB and manifest paths from the shared `started_at` ts.
+
+    Every artifact for this run lives under a per-run subdir
+    ``results/<machine_id>/run_<ts>/``, including the DB, manifest, top-level
+    ``alamo-benchmark.log``, per-rep subprocess logs in ``logs/``, and the
+    rendered ``render/`` outputs. Naming the parent by `machine_id` (a
+    user-declared identifier — see SETUP.md §4b) instead of `socket.gethostname()`
+    means switching networks (which changes mDNS-reported hostnames on macOS)
+    does not fork the same machine's results across multiple directories.
+    """
+    ts = _ts_for_path(started_at)
+    run_dir = cfg.output_dir / machine_id / f"run_{ts}"
+    db_path = run_dir / f"run_{ts}.db"
+    manifest_path = run_dir / f"run_{ts}.manifest.json"
     return db_path, manifest_path
 
 

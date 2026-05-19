@@ -22,15 +22,14 @@ build/
 *.swo
 .DS_Store
 
-# Per-machine artifacts (the .db and .manifest.json files ARE committed)
-results/*/logs/
-results/*/frames/
-results/*/build/
-results/*/plotfiles/
-results/*/*.png
-results/*/*.gif
-results/*/*.webm
-results/*/*.mp4
+# Per-machine artifacts. Committed: .db, .manifest.json, alamo-benchmark.log.
+# Gitignored: per-rep subprocess logs (compile/regression/SCP/render subprocesses)
+# and rendered media (frames + encoded gif/webm/mp4).
+results/*/run_*/logs/
+results/*/run_*/render/
+# SQLite WAL/SHM files — transient, never useful to commit alongside the .db
+results/*/run_*/*.db-wal
+results/*/run_*/*.db-shm
 
 # Alamo submodule build artifacts (the submodule itself is tracked)
 alamo/tmp_build_dir/

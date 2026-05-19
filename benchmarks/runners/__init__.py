@@ -9,7 +9,7 @@ from benchmarks.runners.compile_runner import (
 )
 from benchmarks.runners.noise_floor import NoiseFloorBenchmark
 from benchmarks.runners.regression import RegressionSuiteBenchmark
-from benchmarks.runners.render import RenderBenchmark
+from benchmarks.runners.render import RenderEncodeBenchmark, RenderFramesBenchmark
 from benchmarks.runners.scp_elastic import SCPElasticBenchmark
 
 RUNNERS: dict[str, type[Benchmark]] = {
@@ -18,7 +18,8 @@ RUNNERS: dict[str, type[Benchmark]] = {
     CompileParallelBenchmark.name: CompileParallelBenchmark,
     RegressionSuiteBenchmark.name: RegressionSuiteBenchmark,
     SCPElasticBenchmark.name: SCPElasticBenchmark,
-    RenderBenchmark.name: RenderBenchmark,
+    RenderFramesBenchmark.name: RenderFramesBenchmark,
+    RenderEncodeBenchmark.name: RenderEncodeBenchmark,
 }
 
 __all__ = [

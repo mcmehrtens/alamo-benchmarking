@@ -1,19 +1,26 @@
 """Alamo compile benchmarks.
 
 Both `compile_serial` (`make -j1`) and `compile_parallel` (`make -j<physical>`)
-run on a forced-cold cache. Each rep:
+run on a forced-cold cache. Each rep iterates the dimensions configured under
+`[alamo] dims` (default `[3]`, production typically `[2, 3]` since the
+regression suite needs both). Per rep:
 
-1. `git clean -fdx alamo/` + `git checkout -- .` to wipe build artifacts and
-   any stray local edits.
-2. `CCACHE_DISABLE=1 ./configure --comp=clang++`
-3. `CCACHE_DISABLE=1 make -j<N>`
+1. `git -C alamo clean -fdx` + `git -C alamo checkout -- .` to wipe build
+   artifacts AND any cloned AMReX dependency (so the timing reflects a true
+   from-scratch build, including dependency fetch).
+2. For each configured dim:
+   a. `CCACHE_DISABLE=1 ./configure --dim=<dim> --comp=<compiler>`
+   b. `CCACHE_DISABLE=1 make -j<N>`
 
-The wall-clock time covers configure + make together. See README "Design
-decisions" for why we don't run a warm-cache variant.
+The reported `wall_s` covers ALL dims in the rep (configure + make for each),
+summed; this is what a new lab user does when they "build Alamo from scratch."
+Each dim's exit code is checked individually; a failure on any dim fails the
+whole rep.
 """
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import time
@@ -35,7 +42,11 @@ class _CompileBase(Benchmark):
         for i in range(warmups + reps):
             yield RunSpec(
                 benchmark=self.name,
-                config={"j": j, "compiler": ctx.config.alamo.compiler},
+                config={
+                    "j": j,
+                    "compiler": ctx.config.alamo.compiler,
+                    "dims": list(ctx.config.alamo.dims),
+                },
                 rep_index=i,
                 is_warmup=(i < warmups),
             )
@@ -43,6 +54,9 @@ class _CompileBase(Benchmark):
     @override
     def run_one(self, spec: RunSpec, ctx: RunContext) -> RunResult:
         log_path = ctx.log_dir / f"{self.name}_rep{spec.rep_index}.log"
+        j = int(spec.config["j"])
+        compiler = str(spec.config["compiler"])
+        dims = [int(d) for d in spec.config["dims"]]
 
         started_at = utc_now()
         t0 = time.perf_counter()
@@ -60,17 +74,23 @@ class _CompileBase(Benchmark):
             )
 
         env = _build_env()
+        rc = 0
+        failing_dim: int | None = None
         with log_path.open("wb") as logf:
-            rc = subprocess.run(
-                ["./configure", f"--comp={ctx.config.alamo.compiler}"],
-                cwd=ctx.alamo_dir,
-                env=env,
-                check=False,
-                stdout=logf,
-                stderr=subprocess.STDOUT,
-            ).returncode
-            if rc == 0:
-                j = int(spec.config["j"])
+            for dim in dims:
+                _log_step(logf, f"\n=== configure dim={dim} comp={compiler} ===\n")
+                rc = subprocess.run(
+                    ["./configure", f"--dim={dim}", f"--comp={compiler}"],
+                    cwd=ctx.alamo_dir,
+                    env=env,
+                    check=False,
+                    stdout=logf,
+                    stderr=subprocess.STDOUT,
+                ).returncode
+                if rc != 0:
+                    failing_dim = dim
+                    break
+                _log_step(logf, f"\n=== make -j{j} dim={dim} ===\n")
                 rc = subprocess.run(
                     ["make", f"-j{j}"],
                     cwd=ctx.alamo_dir,
@@ -79,9 +99,13 @@ class _CompileBase(Benchmark):
                     stdout=logf,
                     stderr=subprocess.STDOUT,
                 ).returncode
+                if rc != 0:
+                    failing_dim = dim
+                    break
 
         t1 = time.perf_counter()
         ended_at = utc_now()
+        notes = "" if rc == 0 else f"failed at dim={failing_dim}"
         return RunResult(
             spec=spec,
             started_at=started_at,
@@ -91,6 +115,7 @@ class _CompileBase(Benchmark):
             status="completed" if rc == 0 else "failed",
             stdout_path=str(log_path),
             stderr_path=str(log_path),
+            notes=notes,
         )
 
 
@@ -112,10 +137,19 @@ class CompileParallelBenchmark(_CompileBase):
 
 
 def _force_cold_cache(alamo_dir: Path) -> subprocess.CalledProcessError | None:
-    """Wipe build artifacts before a compile rep. Returns the error on failure."""
+    """Wipe build artifacts + cloned dependencies before a compile rep.
+
+    `git clean -fdx` deletes every untracked file — including gitignored ones,
+    which is what we want for the cloned AMReX dir and per-dim build outputs.
+    But `alamo/.venv` is also untracked-and-gitignored (it's the user-installed
+    venv for `runtests.py` deps), and wiping it forces the user to recreate it
+    between every compile rep AND fails the next `regression_suite` rep. We
+    therefore preserve `.venv` via `-e .venv` and let the regression runner
+    consume it across reps.
+    """
     try:
         subprocess.run(
-            ["git", "-C", str(alamo_dir), "clean", "-fdx"],
+            ["git", "-C", str(alamo_dir), "clean", "-fdx", "-e", ".venv"],
             check=True,
             capture_output=True,
             text=True,
@@ -135,3 +169,12 @@ def _build_env() -> dict[str, str]:
     env = os.environ.copy()
     env["CCACHE_DISABLE"] = "1"
     return env
+
+
+def _log_step(logf: object, line: str) -> None:
+    """Append a delimiter line to the rep's combined log."""
+    write = getattr(logf, "write", None)
+    if write is None:
+        return
+    with contextlib.suppress(OSError):
+        write(line.encode())

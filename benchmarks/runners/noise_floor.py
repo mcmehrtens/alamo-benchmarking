@@ -23,9 +23,13 @@ from benchmarks.runners.base import (
     utc_now,
 )
 
-# Matmul size chosen to hit ~100-300 ms on a modern desktop CPU. Small enough
-# that variance is detectable; large enough that overhead is negligible.
-_MATMUL_SIZE = 1500
+# Matmul size targeting ~100-300 ms per rep on both Apple Silicon (via Accelerate)
+# and Xeon (via OpenBLAS / MKL). At 1500 the M1 Pro finished in ~20 ms - too short
+# to characterize variance robustly against perf_counter quantization. At 4000 the
+# M1 Pro hits ~250 ms and a Xeon W5-2545 should land near ~300 ms; well-suited
+# for measuring per-night sigma without bloating the noise-floor budget
+# (20 reps * 0.3 s ~= 6 s total).
+_MATMUL_SIZE = 4000
 _MATMUL_SEED = 42
 
 

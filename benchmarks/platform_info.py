@@ -1,12 +1,25 @@
 """Capture full host metadata for the manifest and the `host` table.
 
 Anything that could conceivably matter for reproducing a benchmark goes here.
+
+`machine_id` is the canonical per-machine identifier used for the results
+directory name. It is REQUIRED for `run`: a machine has to declare one before
+any benchmarks execute. We don't derive it from hostname because macOS mDNS
+reports a different short hostname depending on which network the machine is
+on (`foo.local` at home, `foo.lab.example.edu` on the campus VPN), which would
+silently fork the same machine's results into multiple directories.
+
+The machine_id is sourced from (in priority order):
+  1. `ALAMO_BENCHMARK_MACHINE_ID` environment variable.
+  2. `~/.alamo-benchmark/machine_id` (single line of text).
+If neither is set, `machine_id` is None and the CLI refuses to start `run`.
 """
 
 from __future__ import annotations
 
 import os
 import platform
+import re
 import socket
 import subprocess
 import sys
@@ -17,6 +30,11 @@ from typing import Any
 
 import psutil
 
+_MACHINE_ID_ENV = "ALAMO_BENCHMARK_MACHINE_ID"
+_MACHINE_ID_FILE = Path.home() / ".alamo-benchmark" / "machine_id"
+_MACHINE_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+_MACHINE_ID_MAX_LEN = 64
+
 
 def _empty_str_dict() -> dict[str, str]:
     return {}
@@ -25,6 +43,8 @@ def _empty_str_dict() -> dict[str, str]:
 @dataclass(frozen=True)
 class PlatformInfo:
     hostname: str
+    machine_id: str | None
+    machine_id_source: str
     os_name: str
     os_version: str
     kernel: str
@@ -64,8 +84,11 @@ _ENV_KEYS = (
 
 def collect(output_dir: Path) -> PlatformInfo:
     """Gather everything we want to record for this machine, right now."""
+    machine_id, source = _machine_id()
     return PlatformInfo(
         hostname=socket.gethostname(),
+        machine_id=machine_id,
+        machine_id_source=source,
         os_name=platform.system(),
         os_version=_os_version(),
         kernel=platform.release(),
@@ -222,3 +245,38 @@ def _tool_version(tool: str) -> str:
 
 def _collect_env() -> dict[str, str]:
     return {k: os.environ[k] for k in _ENV_KEYS if k in os.environ}
+
+
+def _machine_id() -> tuple[str | None, str]:
+    """Resolve the per-machine identifier and report where it came from.
+
+    Returns ``(machine_id, source)`` where source is one of:
+      - ``"env"``  — from `$ALAMO_BENCHMARK_MACHINE_ID`
+      - ``"file"`` — from `~/.alamo-benchmark/machine_id`
+      - ``"unset"`` — neither set; caller must refuse to write results
+      - ``"invalid:<reason>"`` — a value was provided but rejected
+    """
+    raw_env = os.environ.get(_MACHINE_ID_ENV)
+    if raw_env is not None:
+        return _validate_id(raw_env, source_label="env")
+
+    if _MACHINE_ID_FILE.is_file():
+        try:
+            raw_file = _MACHINE_ID_FILE.read_text().strip()
+        except OSError as e:
+            return None, f"invalid:file_read_error:{e}"
+        if raw_file:
+            return _validate_id(raw_file, source_label="file")
+
+    return None, "unset"
+
+
+def _validate_id(raw: str, *, source_label: str) -> tuple[str | None, str]:
+    candidate = raw.strip()
+    if not candidate:
+        return None, f"invalid:{source_label}_empty"
+    if len(candidate) > _MACHINE_ID_MAX_LEN:
+        return None, f"invalid:{source_label}_too_long"
+    if not _MACHINE_ID_RE.match(candidate):
+        return None, f"invalid:{source_label}_bad_chars"
+    return candidate, source_label

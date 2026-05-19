@@ -1,7 +1,11 @@
 # Smoke-test configuration.
 #
-# Runs every code path with tiny inputs and minimal reps. Use this to verify the
-# benchmark itself works on a new machine before kicking off the full overnight run.
+# Runs the no-Alamo benchmarks with minimal reps to verify the harness itself
+# (CLI, preflight, topology, results writer) works on a new machine. Does NOT
+# exercise the compile / regression / SCP / render path — use `validate.toml`
+# for the end-to-end shakedown instead.
+#
+# Expected duration: under a minute on any machine.
 
 [run]
 mode = "quick"
@@ -26,19 +30,25 @@ max_uptime_days = 365
 [alamo]
 build_target = "tests/SCPSpheresElastic/input"
 compiler = "clang++"
+dims = [3]
 
 [telemetry]
 sample_interval_seconds = 1
 require_sudo = false      # skip the sudo-gated samplers in quick mode
 
 [benchmarks]
+# noise_floor is the only runner here because anything Alamo-touching (compile,
+# regression, scp_elastic, render) needs at least a few minutes per rep and is
+# not "smoke test" material. Use validate.toml for a real Alamo-touching shake.
 enabled = [
     "noise_floor",
-    "scp_elastic",
 ]
 
+# Stub sections present only because BenchmarksConfig fields are non-optional;
+# unused at runtime since neither runner is enabled.
 [benchmarks.scp_elastic]
-extra_core_counts = [1, 2]   # tiny sweep, ignore the auto-sweep
+extra_core_counts = []
+stop_time = "0.0001_s"
 
 [benchmarks.render]
 codecs = ["gifski"]

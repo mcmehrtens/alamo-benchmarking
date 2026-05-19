@@ -1,0 +1,84 @@
+# Regression-suite timing isolation.
+#
+# Builds Alamo (2D + 3D) in parallel on a cold cache, then runs
+# `./scripts/runtests.py` once. No telemetry sidecar, no SCP, no render — just
+# the two pieces needed to answer "how long does Alamo's full regression suite
+# take on this machine?"
+#
+# Use this on a new lab machine before kicking off `default.toml` overnight:
+# the regression suite is the single largest unknown in the overnight budget,
+# and the rest of `default.toml`'s timing extrapolates cleanly from `validate.toml`.
+#
+# Expected duration on M1 Pro: ~3 min (parallel compile) + 30–90 min (regression,
+# unknown). Watch `results/<hostname>/run_<ts>/alamo-benchmark.log` for the
+# regression rep's wall time and size your overnight budget from there.
+
+[run]
+mode = "regression-only"
+output_dir = "results"
+random_seed = 0
+
+[statistics]
+warmup_reps = 0          # no warmup — we want one timing per piece
+reps_short = 1
+reps_long = 1
+reps_noise_floor = 0     # noise_floor not enabled below; this is required by the schema
+cooldown_seconds = 5
+
+[preflight]
+require_ac = false
+require_governor = "any"
+require_macos_perf_mode = false
+max_load_1min = 4.0
+min_disk_free_gb = 5
+max_uptime_days = 365
+
+[alamo]
+build_target = "tests/SCPSpheresElastic/input"
+compiler = "clang++"
+dims = [2, 3]            # regression_suite needs both 2D and 3D binaries
+
+[telemetry]
+sample_interval_seconds = 1
+require_sudo = false     # no powermetrics / turbostat — we only want timing
+
+[benchmarks]
+enabled = [
+    "compile_parallel",  # cold-cache parallel build of both dims so `bin/alamo-{2,3}d-clang++` exists
+    "regression_suite",
+]
+
+[benchmarks.regression]
+# Known-failing tests on macOS (M1 Pro, Apple Clang) as of 2026-05-19.
+# Kept in sync with default.toml. See default.toml for the rationale.
+skip_tests = [
+    # Flaky / intermittent on macOS.
+    "FracturePFCZM.2d-serial-notch",
+    # Tolerance-bust failures, Voronoi / ThermoElastic 2D family on macOS.
+    "ThermoElastic.2d",
+    "Voronoi.2D-100grain-parallel",
+    "Voronoi.2D-100grain-serial",
+    "VoronoiElastic.2d-serial",
+    "VoronoiElastic.2d-parallel",
+    "VoronoiElastic.2d-serial-restart",
+    "VoronoiElastic.periodic-2d-serial",
+    "VoronoiSimplePeriodic.2d-amr0-mg0-np1",
+    "VoronoiSimplePeriodic.2d-amr2-mg0-np1",
+    "VoronoiSimplePeriodic.2d-amr0-mga-np1",
+    "VoronoiSimplePeriodic.2d-amr2-mga-np1",
+    "VoronoiSimplePeriodic.2d-amr0-mg0-np4",
+    "VoronoiSimplePeriodic.2d-amr2-mg0-np4",
+    "VoronoiSimplePeriodic.2d-amr0-mga-np4",
+    "VoronoiSimplePeriodic.2d-amr2-mga-np4",
+]
+
+# Stub sections present only because BenchmarksConfig fields are non-optional;
+# unused at runtime since these runners aren't enabled.
+[benchmarks.scp_elastic]
+extra_core_counts = []
+stop_time = "0.0001_s"
+
+[benchmarks.render]
+codecs = ["gifski"]
+frame_resolution = [640, 360]
+fps = 15

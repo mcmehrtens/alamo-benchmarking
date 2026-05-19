@@ -11,7 +11,11 @@ random_seed = 0          # 0 = generate from os.urandom and record in run.config
 [statistics]
 warmup_reps = 1
 reps_short = 5           # SCP at each core count, codec encodes, frame gen
-reps_long = 3            # compile, full regression suite
+reps_long = 2            # compile, full regression suite — kept low because
+                         # regression-suite wall time is unpredictable across
+                         # machines (estimated 30–90 min/rep) and dominates
+                         # any "long" benchmark; 2 reps gives a min/max bracket
+                         # without blowing the 12 h overnight budget.
 reps_noise_floor = 20
 cooldown_seconds = 30    # pause between reps to let thermals settle
 
@@ -25,7 +29,8 @@ max_uptime_days = 14
 
 [alamo]
 build_target = "tests/SCPSpheresElastic/input"
-compiler = "clang++"
+compiler = "clang++"           # Apple Clang on macOS, LLVM clang on Linux — both via $PATH
+dims = [2, 3]                  # regression suite needs 2D and 3D binaries; SCP uses 3D
 
 [telemetry]
 sample_interval_seconds = 1
@@ -38,13 +43,64 @@ enabled = [
     "compile_parallel",
     "regression_suite",
     "scp_elastic",
-    "render",
+    "render_frames",     # must precede render_encode — encoder reads the latest frames_rep* dir
+    "render_encode",
+]
+
+[benchmarks.regression]
+# Sub-tests skipped before invoking `./scripts/runtests.py`. Format:
+# "<TestDir>.<section_name>" — must match a `#@ [section_name]` block inside
+# alamo/tests/<TestDir>/input. The runner patches the input file at the start
+# of every regression rep (the next compile rep's cold-cache wipes the patch
+# via `git checkout -- .`, so we re-apply per rep).
+#
+# These 15 tests are known-failing on macOS (Apple Clang + M1 Pro fixture as
+# of 2026-05-19): all are tolerance-bust style failures in the Voronoi /
+# ThermoElastic 2D solvers. Linux runs would presumably pass them, but we
+# skip globally to keep the wall-time signal clean and the cross-machine
+# data comparable. If you want to UN-skip on Linux, override `skip_tests = []`
+# in a Linux-specific config.
+skip_tests = [
+    # Flaky / intermittent on macOS — fails occasionally rather than every run.
+    "FracturePFCZM.2d-serial-notch",
+    # Tolerance-bust failures, Voronoi / ThermoElastic 2D family on macOS.
+    "ThermoElastic.2d",
+    "Voronoi.2D-100grain-parallel",
+    "Voronoi.2D-100grain-serial",
+    "VoronoiElastic.2d-serial",
+    "VoronoiElastic.2d-parallel",
+    "VoronoiElastic.2d-serial-restart",
+    "VoronoiElastic.periodic-2d-serial",
+    "VoronoiSimplePeriodic.2d-amr0-mg0-np1",
+    "VoronoiSimplePeriodic.2d-amr2-mg0-np1",
+    "VoronoiSimplePeriodic.2d-amr0-mga-np1",
+    "VoronoiSimplePeriodic.2d-amr2-mga-np1",
+    "VoronoiSimplePeriodic.2d-amr0-mg0-np4",
+    "VoronoiSimplePeriodic.2d-amr2-mg0-np4",
+    "VoronoiSimplePeriodic.2d-amr0-mga-np4",
+    "VoronoiSimplePeriodic.2d-amr2-mga-np4",
 ]
 
 [benchmarks.scp_elastic]
 # Sweep is auto-generated as 1, 2, 4, 8, ..., physical, physical + virtual.
 # Add explicit additional values here if needed.
 extra_core_counts = []
+# Simulated time per rep.
+#
+# The on-disk `tests/SCPSpheresElastic/input` runs to 0.11 s of simulated time —
+# at the per-step cost we measured (≈5.5 s/step single-core on an M1 Pro), that's
+# 6+ days of wall time per rep, completely outside an overnight budget. We
+# override `stop_time` from this config so 12 h is achievable.
+#
+# Reference timings on the M1 Pro at `stop_time = "0.001_s"` (1000 steps):
+#   np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min
+#   sweep total ≈ 229 min / rep
+#
+# At `stop_time = "0.0003_s"` (300 steps) the sweep is ≈68 min/rep — with the
+# warmup + 5 reps we have ≈7 h of SCP work on the slowest expected machine, and
+# enough AMR regrid cycles (3 at base_regrid_int=100) for the scaling signal to
+# be meaningful. Faster lab boxes finish proportionally sooner.
+stop_time = "0.0003_s"
 
 [benchmarks.render]
 codecs = ["gifski", "av1", "h265"]

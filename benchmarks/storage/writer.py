@@ -37,6 +37,7 @@ class ResultWriter:
         self,
         *,
         run_id: str,
+        machine_id: str,
         hostname: str,
         started_at: str,
         benchmark_repo_sha: str | None,
@@ -47,12 +48,13 @@ class ResultWriter:
     ) -> None:
         self._conn.execute(
             """INSERT INTO run (
-                run_id, hostname, started_at, benchmark_repo_sha,
+                run_id, machine_id, hostname, started_at, benchmark_repo_sha,
                 benchmark_repo_dirty, alamo_repo_sha, alamo_repo_dirty,
                 config_json, schema_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 run_id,
+                machine_id,
                 hostname,
                 started_at,
                 benchmark_repo_sha,

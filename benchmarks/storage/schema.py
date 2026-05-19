@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-SCHEMA_VERSION = 1
+# v1 → v2: add `machine_id` to `run` (network-stable per-machine identifier;
+#          `hostname` is kept for context but is no longer the canonical key).
+SCHEMA_VERSION = 2
 
 DDL = """
 CREATE TABLE IF NOT EXISTS run (
     run_id TEXT PRIMARY KEY,
+    machine_id TEXT NOT NULL,
     hostname TEXT NOT NULL,
     started_at TEXT NOT NULL,
     ended_at TEXT,

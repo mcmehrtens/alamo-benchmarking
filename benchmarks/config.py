@@ -32,6 +32,7 @@ class PreflightConfig:
 class AlamoConfig:
     build_target: str
     compiler: str
+    dims: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,8 @@ class TelemetryConfig:
 class BenchmarksConfig:
     enabled: tuple[str, ...]
     scp_elastic_extra_core_counts: tuple[int, ...]
+    scp_elastic_stop_time: str
+    regression_skip_tests: tuple[str, ...]
     render_codecs: tuple[str, ...]
     render_frame_resolution: tuple[int, int]
     render_fps: int
@@ -79,6 +82,7 @@ def load_config(path: Path) -> Config:
 
     render_cfg: dict[str, Any] = bench.get("render", {})
     scp_cfg: dict[str, Any] = bench.get("scp_elastic", {})
+    reg_cfg: dict[str, Any] = bench.get("regression", {})
     res_raw: list[int] = render_cfg.get("frame_resolution", [1920, 1080])
 
     return Config(
@@ -103,6 +107,7 @@ def load_config(path: Path) -> Config:
         alamo=AlamoConfig(
             build_target=str(alamo["build_target"]),
             compiler=str(alamo["compiler"]),
+            dims=tuple(int(d) for d in alamo.get("dims", [3])),
         ),
         telemetry=TelemetryConfig(
             sample_interval_seconds=float(tel["sample_interval_seconds"]),
@@ -113,6 +118,8 @@ def load_config(path: Path) -> Config:
             scp_elastic_extra_core_counts=tuple(
                 int(x) for x in scp_cfg.get("extra_core_counts", [])
             ),
+            scp_elastic_stop_time=str(scp_cfg.get("stop_time", "0.001_s")),
+            regression_skip_tests=tuple(str(x) for x in reg_cfg.get("skip_tests", [])),
             render_codecs=tuple(
                 str(x) for x in render_cfg.get("codecs", ["gifski", "av1", "h265"])
             ),

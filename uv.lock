@@ -11,8 +11,10 @@ name = "alamo-benchmarking"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "matplotlib" },
     { name = "numpy" },
     { name = "psutil" },
+    { name = "yt" },
 ]
 
 [package.optional-dependencies]
@@ -21,22 +23,18 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
-render = [
-    { name = "matplotlib" },
-    { name = "yt" },
-]
 
 [package.metadata]
 requires-dist = [
-    { name = "matplotlib", marker = "extra == 'render'", specifier = ">=3.9" },
+    { name = "matplotlib", specifier = ">=3.9" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "psutil", specifier = ">=6.0" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
-    { name = "yt", marker = "extra == 'render'", specifier = ">=4.4" },
+    { name = "yt", specifier = ">=4.4" },
 ]
-provides-extras = ["render", "dev"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "cmyt"

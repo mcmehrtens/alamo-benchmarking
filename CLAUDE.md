@@ -12,6 +12,9 @@ A cross-platform Python benchmarking suite for Alamo (lab's phase-field solid-me
 
 ## Sharp edges
 
+### Machine identity is user-declared, not derived from hostname
+The benchmark refuses to start `run` unless `ALAMO_BENCHMARK_MACHINE_ID` is set (env var) or `~/.alamo-benchmark/machine_id` exists. `socket.gethostname()` is unreliable on macOS — the same physical Mac reports `foo.local` on one network and `foo.lab.example.edu` on another via mDNS/DNS, so two networks would silently fork the same machine's results into two `results/<host>/` dirs. `machine_id` is stored in the run table (schema v2+), used for the results dir name, and validated to `[A-Za-z0-9._-]{1,64}` to keep it filesystem-safe. The original OS hostname is still recorded in the `hostname` column for context but is no longer the canonical key.
+
 ### Sudo over long runs
 macOS `sudo` cache expires (~5 min default). The telemetry sidecar keeps it alive via a background `sudo -v` keepalive loop. Don't assume the sudo cache is valid hours into a run — re-validate. Same applies on Linux but the default cache is sometimes longer; assume nothing.
 
@@ -24,17 +27,19 @@ Detect via `sysctl machdep.cpu.brand_string`, then map perflevels:
 
 Heuristic if a future chip's brand string is unrecognized: if `perflevel1` cores have comparable L2 cache size to `perflevel0` (within ~2×), assume both are "physical-class" and warn loudly. If `perflevel1` is much smaller, it's an efficiency tier — treat as virtual.
 
-### MPI affinity on macOS is best-effort
-We ask for `--bind-to core --map-by core` but macOS may ignore it. Always set `OMPI_MCA_orte_report_bindings=1` and capture the resulting stderr into the result row so we know what actually happened, not what was requested. On Linux, affinity is reliable; record it anyway for the same reason.
+### MPI affinity is platform-specific
+On Linux, OpenMPI honors `--bind-to core --map-by core` and pinning is reliable — `scp_elastic.run_one` passes those flags explicitly. On macOS, OpenMPI/PRRTE has no hwloc binding support and an `mpiexec` invocation that includes them aborts with exit 213; the runner therefore omits the flags on Darwin and accepts whatever placement the OS scheduler chooses. In both cases we set `OMPI_MCA_orte_report_bindings=1` so the actual binding (or its absence) is visible in the per-rep log. Parsing that stderr into the result row is still on the TODO list in `scp_elastic.run_one`.
 
 ### Cold cache means cold cache
 Before each compile rep:
-1. `git -C alamo clean -fdx` (everything except submodule's `.git`).
+1. `git -C alamo clean -fdx -e .venv` (wipe everything untracked, but preserve `alamo/.venv` — see below).
 2. `git -C alamo checkout -- .` to undo any stray edits.
 3. Set `CCACHE_DISABLE=1` in the env passed to `make`.
 4. Verify `git -C alamo status --porcelain` is empty.
 
 A half-warm cache produces compile timings that aren't comparable across reps and aren't defensible.
+
+**Why preserve `.venv`:** Alamo's regression suite (`runtests.py`) needs `alamo/.venv/bin/python3` with `yt`, `pandas`, etc. That venv is created once via SETUP.md step 4 and lives across runs. It's untracked-and-gitignored, so a bare `git clean -fdx` deletes it on every compile rep — which then fails the next `regression_suite` rep. The `-e .venv` exclude keeps it alive.
 
 ### Telemetry parser robustness
 - `powermetrics --format plist` emits multiple plists in a stream; parse incrementally, skip malformed plists with a logged warning.
@@ -42,7 +47,7 @@ A half-warm cache produces compile timings that aren't comparable across reps an
 - A telemetry failure must NEVER kill a benchmark rep. Log, mark a gap in the manifest, continue. Telemetry is observation, not control.
 
 ### Schema versioning
-Bump `schema_version` in the `run` table on ANY breaking schema change. The aggregation pattern (`ATTACH DATABASE`) requires that callers know what schema each per-machine DB uses. Older DBs do not need to be migrated forward — aggregation queries can branch on `schema_version`.
+Bump `schema_version` in the `run` table on ANY breaking schema change. The aggregation pattern (`ATTACH DATABASE`) requires that callers know what schema each per-machine DB uses. Older DBs do not need to be migrated forward — aggregation queries can branch on `schema_version`. Current version: **2** (added `run.machine_id` in v2; older v1 DBs lack the column and shouldn't be aggregated alongside v2 without translation).
 
 ### Timestamps
 All UTC, all ISO-8601, all `YYYY-MM-DDTHH:MM:SS.ffffffZ` format. Never store local time. Telemetry samples and benchmark windows are joined by time range — mixing timezones across lab machines is a debugging nightmare.
@@ -55,6 +60,38 @@ The within-sweep run-order shuffle uses a seeded RNG. The seed is stored in `run
 
 ### Pre-flight is observe-only
 Pre-flight checks REPORT system state and refuse to start if conditions aren't met. They do NOT mutate the system (don't flip governors, don't toggle High Power Mode, don't kill background processes). The user configures the machine themselves; pre-flight just verifies. This is explicit by user choice — don't backslide into auto-configuration even if it would be convenient.
+
+### Compiler per OS: vanilla, not unified
+The benchmark builds Alamo with the **default per-OS** compiler the PI considers "vanilla":
+
+- **macOS**: Apple Clang (Xcode CLT). Invoked as `clang++` via `$PATH`.
+- **Linux**: LLVM clang (standard distro package). Also invoked as `clang++` via `$PATH`.
+
+Config `[alamo] compiler = "clang++"` is correct for **both** — `$PATH` resolves to the right binary. Don't try to pin paths or unify. The actual compiler version (Apple vs LLVM, version number) is captured in `platform_info.tool_versions["clang"]` and surfaces in the manifest, so the distinction is recorded unambiguously per-machine. An earlier draft of the requirements said "LLVM on both"; that's superseded — do not standardize.
+
+### Multi-dim compile builds
+`compile_serial` and `compile_parallel` build every dimension in `[alamo] dims` per rep (`./configure --dim=<D> --comp=<compiler>` then `make`, repeated for each `D`). Default is `[3]`; production is `[2, 3]` because Alamo's regression suite needs both 2D and 3D binaries. The wall-clock for a rep covers all dims combined — that's the "build Alamo from scratch" timing a new lab user would experience. Cold cache (`git clean -fdx`) wipes everything including cloned AMReX once per rep, BEFORE the first dim; subsequent dims in the same rep reuse the per-dim build output dirs Alamo creates (e.g., `ext/AMReX-Codes/amrex/2d-clang++-26.02` vs `3d-...`).
+
+### Regression suite invokes runtests.py directly
+The `regression_suite` benchmark runs `./scripts/runtests.py --comp <compiler>`, **not** `make test`. The Makefile's `test` target chains in `check_tabs.py` and `make docs`, which are unrelated to what we're benchmarking and frequently break for unrelated reasons. `runtests.py` does not build Alamo — it expects pre-built binaries at `bin/{exe}-{dim}d-{comp}`, so a `compile_*` rep MUST run first and MUST have built every dim the regression suite needs. FFT tests are opt-in via `--fft`; we don't add that flag.
+
+**Skipping known-bad sub-tests.** Some sub-tests are flaky or platform-specific (e.g. the Voronoi / ThermoElastic 2D suites tolerance-bust on macOS as of 2026-05-19). `[benchmarks.regression] skip_tests = ["TestDir.section", ...]` is converted at the start of every regression rep into `#@ skip=true` injections inside `alamo/tests/<TestDir>/input`. `runtests.py` honors the directive and counts the section as 'skipped', not 'failed'. The next compile rep's `git checkout -- .` wipes the patches — the alamo submodule is never persistently modified. Implementation: `benchmarks/runners/regression.py:_apply_skip_patches`. Adding a new skip is config-only — no code change.
+
+### Render runs as two cooperating benchmarks
+`render_frames` (yt → PNG) and `render_encode` (ffmpeg/gifski) are two separate runners. Their order in `[benchmarks].enabled` matters: `render_frames` must come before `render_encode` so the encoder can pick up the most-recently-written `frames_rep<N>/` dir under `run_dir/render/`. Within each runner, `cli._cmd_run_inner` still shuffles spec ordering — that's safe because every encode spec reads from the same canonical frames dir (chosen by mtime). A missing prerequisite (no SCP output for frames, no frames for encode) produces a `notes="…"` failure row, NOT an exception — same shape as `scp_elastic`'s "no Alamo binary" failure mode.
+
+Encoder commands include `-vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"` because yt's matplotlib output has odd-dimension borders that libx265 rejects under `yuv420p`. Don't drop the pad filter unless you've also dropped `yuv420p`.
+
+`render_frames` uses `from yt import SlicePlot, load, set_log_level` with per-symbol `# pyright: ignore[reportPrivateImportUsage]`; yt doesn't declare them in `__all__` even though they're documented public API.
+
+### File logging
+Every `run` invocation tees the root logger to `run_dir/alamo-benchmark.log`. The handler is attached BEFORE preflight runs so a preflight failure is captured on disk too. `_print_preflight` deliberately calls both `print` (for the operator watching stdout) and `LOG.info` (so the file gets the same lines). Per-rep subprocess output (compile logs, regression logs, SCP logs, frame-render logs) lives separately under `run_dir/logs/`.
+
+### Timing budget on the slowest machine
+On the M1 Pro fixture machine, a full `scp_elastic` sweep at `stop_time = 0.001_s` (1000 timesteps) took 229 min wall. The on-disk Alamo `input` specifies `stop_time = 0.11_s` — running it as-is is 110× longer than 0.001 (≈6 days/rep at np=1). `configs/default.toml` overrides to `stop_time = 0.0003_s` (≈68 min/sweep) and caps `reps_long = 2`, giving an overnight budget of ~9–11 h on M1 Pro. Reference per-rep timings at `0.001_s` on M1 Pro:
+- np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min.
+
+If a future agent considers raising `stop_time` "to be more thorough", verify the new total wall time against this reference first.
 
 ## Conventions
 
@@ -100,18 +137,19 @@ Runners themselves are integration-tested via `--mode quick`, which exercises th
 - Full package scaffold; `alamo-benchmark` CLI with `run`, `preflight`, `describe`, `dry-run`.
 - Topology detection on macOS (Apple Silicon M1-M5 with Fusion-Architecture awareness) and Linux Xeon (with HT).
 - Pre-flight gating; `--force` override is recorded.
-- SQLite + JSON manifest output under `results/<hostname>/`.
-- `noise_floor` runner — fully implemented and validated.
-- `compile_serial`, `compile_parallel`, `regression_suite`, `scp_elastic` runners — implemented, tested at the framework level (real Alamo build not yet exercised end-to-end).
-- **Telemetry sidecars:** `MacosSidecar` (`powermetrics --format plist`) and `LinuxSidecar` (`turbostat --quiet`). One sidecar per run, lifecycle managed in `_cmd_run`. Background sudo keepalive (`SudoKeepalive`). Parsers tested against real captures for M1 Pro / M4 Pro / M5 Pro and Xeon W-1370 / W5-2545 — fixtures live in `tests/fixtures/`. Telemetry-to-result join is by time range.
-- Ruff (strict ruleset) and Pyright (strict mode) both pass with zero errors/warnings.
-- Unit tests for the topology sweep generator and both telemetry parsers under `tests/`.
+- SQLite + JSON manifest output under `results/<machine_id>/run_<ts>/` (per-run subdir for DB, manifest, top-level run log, per-rep subprocess logs, and rendered media). `machine_id` is required and read from `$ALAMO_BENCHMARK_MACHINE_ID` or `~/.alamo-benchmark/machine_id`; the run refuses to start if unset.
+- `noise_floor` runner — fully implemented and validated; matmul size 4000 lands ~100–300 ms per rep on Apple Silicon and Xeon (M1 Pro reference: ~269 ms).
+- `compile_serial`, `compile_parallel`, `regression_suite`, `scp_elastic` runners — implemented and exercised end-to-end against a real Alamo build on M1 Pro.
+- `render_frames` + `render_encode` runners — yt SlicePlot for frames, gifski / libsvtav1 / libx265 for encodes. Reads the latest `scp_elastic` output_bench dir; renders the `eta` field as a z-slice at the configured resolution.
+- **Decomposition-invariant SCP output hash:** `_hash_output` loads the final cell plotfile via yt and hashes `(current_time, per-field (n, min, max))` quantized to 4 sig figs. Verified to produce identical hashes across the full `np=1,2,4,8,10` sweep at the same `stop_time`, so cross-`np` physics divergence is now detectable (previous Header-bytes hash differed per decomposition).
+- **Telemetry sidecars:** `MacosSidecar` (`powermetrics --format plist`) and `LinuxSidecar` (`turbostat --quiet`). One sidecar per run, lifecycle managed in `_cmd_run`. Background sudo keepalive (`SudoKeepalive`). Parsers tested against real captures for M1 Pro / M4 Pro / M5 Pro and Xeon W-1370 / W5-2545 — fixtures live in `tests/fixtures/`. Telemetry-to-result join is by time range. Validated end-to-end on M1 Pro (14,043 samples × 10 cores during a 4 h run).
+- File logging: every `run` invocation tees the root logger to `run_dir/alamo-benchmark.log`; per-rep subprocess output goes to `run_dir/logs/`. Handler is attached BEFORE preflight so a preflight failure lands on disk too.
+- Ruff (strict ruleset) and Pyright (strict mode) both pass.
+- Unit tests for the topology sweep generator, telemetry parsers, and render helpers under `tests/`.
 - Alamo pinned as a submodule on the `development` branch.
 
 **Deliberately deferred to a follow-up:**
-- **Rendering pipeline:** `RenderBenchmark` yields no specs. Wait for a successful end-to-end SCP run that produces plotfiles before designing the renderer.
-- **Output determinism hash on SCP runs:** `_hash_output` assumes Alamo writes to `alamo/output/`. Confirm against a real Alamo run before relying on it.
-- **MPI affinity instrumentation:** we set `OMPI_MCA_orte_report_bindings=1` but don't yet parse the resulting stderr — TODO in `scp_elastic.run_one`.
+- **MPI affinity instrumentation:** we set `OMPI_MCA_orte_report_bindings=1` but don't yet parse the resulting stderr into the result row — TODO in `scp_elastic.run_one`. On macOS the runner already skips `--bind-to`/`--map-by` (PRRTE has no hwloc binding support on Darwin), so the "did pinning happen?" answer is "no" by construction; on Linux we still need to parse stderr to confirm what actually pinned.
 - **Multi-node MPI:** single-node only.
 - **Aggregation CLI:** SQLite `ATTACH` is the v1 interface — see README "Aggregating across machines".
 - **Power-cap awareness on Linux:** add a pre-flight check that reads RAPL caps.

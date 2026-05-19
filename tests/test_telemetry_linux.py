@@ -1,8 +1,13 @@
-"""Turbostat parser tests against real Xeon W-1370 and W5-2545 captures.
+"""Turbostat parser tests against real Xeon captures.
 
-The two CPUs have different column sets (W-1370 has GFX / SysWatt columns the
-W5-2545 doesn't), so this also verifies the parser is keyed by column name and
-tolerates the column delta."""
+Fixtures cover three CPU generations with different turbostat column sets:
+- W-1370 (Rocket Lake): GFX / SysWatt columns, 8 cores + HT
+- W5-2545 (Sapphire Rapids): no GFX columns, 12 cores + HT
+- E3-1240v6 (Kaby Lake): older C-state column names (C1%/C3%/C6%/C7s%/C8% vs
+  C1ACPI% etc.), 4 cores + HT
+
+Together they verify the parser is keyed by column name (not position) and
+tolerates the column delta across kernel/CPU generations."""
 
 from __future__ import annotations
 
@@ -101,3 +106,34 @@ def test_column_layout_differs_between_w_1370_and_w5_2545():
     a = parse_turbostat_stream(_load("turbostat_linux_xeon-w-1370.txt"))
     b = parse_turbostat_stream(_load("turbostat_linux_xeon-w5-2545.txt"))
     assert len(a) == len(b) == 5
+
+
+def test_e3_1240v6_emits_five_iterations():
+    samples = parse_turbostat_stream(_load("turbostat_linux_xeon-e3-1240v6.txt"))
+    assert len(samples) == 5
+
+
+def test_e3_1240v6_per_core_count_matches_xeon_e3_1240v6():
+    """E3-1240v6: 4 physical cores + HT = 8 logical CPUs."""
+    samples = parse_turbostat_stream(_load("turbostat_linux_xeon-e3-1240v6.txt"))
+    assert len(samples[0].per_core) == 8
+
+
+def test_e3_1240v6_has_hyperthread_siblings_as_virtual():
+    samples = parse_turbostat_stream(_load("turbostat_linux_xeon-e3-1240v6.txt"))
+    sample = samples[0]
+    physical = [c for c in sample.per_core if c.core_type == "physical"]
+    virtual = [c for c in sample.per_core if c.core_type == "virtual"]
+    assert len(physical) == 4
+    assert len(virtual) == 4
+
+
+def test_e3_1240v6_older_cstate_columns_still_yield_package_power():
+    """Kaby Lake turbostat uses C1%/C3%/C6%/C7s%/C8% instead of the newer
+    C1ACPI%/C2ACPI%/... names — the parser keys by column name so PkgWatt
+    should still resolve cleanly."""
+    samples = parse_turbostat_stream(_load("turbostat_linux_xeon-e3-1240v6.txt"))
+    pkg = samples[0].package_power_w
+    assert pkg is not None
+    # Capture is idle; ~10 W is typical for this 72 W TDP chip at idle.
+    assert 0.0 < pkg < 200.0, f"package_power_w={pkg} out of plausible range"

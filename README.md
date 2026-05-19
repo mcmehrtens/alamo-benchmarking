@@ -4,7 +4,7 @@ Cross-platform benchmarking suite for [Alamo](https://github.com/solidsgroup/ala
 
 ## Quick start
 
-After installing the [prerequisites](#prerequisites):
+After installing the [prerequisites](#prerequisites) and completing [SETUP.md](SETUP.md) (which includes declaring this machine's stable `machine_id` — required):
 
 ```bash
 git clone --recurse-submodules <this-repo-url>
@@ -13,9 +13,9 @@ uv sync
 uv run alamo-benchmark run
 ```
 
-`uv run alamo-benchmark run` is the **single command** that drives the entire end-to-end suite — pre-flight verification, noise-floor calibration, every benchmark with all warmups and repetitions, 1 Hz hardware telemetry, full metadata capture, and per-machine SQLite output. Expect **6–10 hours** on a typical workstation; designed to be run overnight.
+`uv run alamo-benchmark run` is the **single command** that drives the entire end-to-end suite — pre-flight verification, noise-floor calibration, every benchmark with all warmups and repetitions, 1 Hz hardware telemetry, full metadata capture, and per-machine SQLite output. Designed to fit in a ≤12 h overnight on the slowest expected lab machine (M1 Pro, ~9–11 h end-to-end); faster hardware finishes proportionally sooner.
 
-Results land in `results/<hostname>/run_<UTC-timestamp>.{db,manifest.json}`. Commit and push your machine's results once the run finishes. Aggregating multiple machines is a SQLite `ATTACH` away (see [Aggregating across machines](#aggregating-across-machines)).
+Results land in `results/<machine_id>/run_<UTC-timestamp>/` — that subdir contains the per-machine SQLite DB, JSON manifest, top-level run log, per-rep subprocess logs, and rendered frames/videos. `machine_id` is the user-declared stable identifier from SETUP.md §4b (not the OS hostname, because mDNS-reported hostnames drift across networks on macOS). Commit and push your machine's results once the run finishes. Aggregating multiple machines is a SQLite `ATTACH` away (see [Aggregating across machines](#aggregating-across-machines)).
 
 ### Diagnostic commands
 
@@ -27,23 +27,31 @@ uv run alamo-benchmark dry-run     # show what would run, don't execute
 
 ## Prerequisites
 
-Install these manually before cloning. The benchmark does **not** install dependencies — we measure the system as you'll actually use it.
+Install these manually before cloning. The benchmark does **not** install dependencies — we measure the system as you'll actually use it. The compiler is the per-OS vanilla toolchain (Apple Clang on macOS, LLVM clang on Linux) — see [Design decisions](#design-decisions).
 
-**macOS (26+)** via Homebrew:
+**macOS (26+)**:
 
 ```bash
-brew install llvm open-mpi ffmpeg gifski uv
+xcode-select --install                            # Apple Clang, make, git
+brew install open-mpi eigen libpng ffmpeg uv      # Alamo deps + ffmpeg + uv
+# gifski: download a binary release from github.com/ImageOptim/gifski
 ```
+
+`powermetrics` ships with macOS — nothing to install for telemetry.
 
 **Ubuntu (24.04+)** via apt:
 
 ```bash
-sudo apt install clang openmpi-bin libopenmpi-dev make build-essential ffmpeg
-# gifski: install from cargo or the release tarball
+sudo apt install build-essential clang libstdc++-14-dev \
+                 libopenmpi-dev libeigen3-dev libpng-dev \
+                 ffmpeg linux-tools-generic "linux-tools-$(uname -r)"
+# gifski: download a binary release from github.com/ImageOptim/gifski
 # uv: install from astral.sh/uv
 ```
 
-Both platforms additionally require `git`, `sudo` (telemetry uses `powermetrics`/`turbostat` which require root), and Python 3.14.5 (managed by `uv sync`).
+`turbostat` ships in `linux-tools-*` — required for telemetry.
+
+Both platforms additionally require `git`, `sudo` (telemetry uses `powermetrics`/`turbostat` which require root), and Python 3.14.5 (managed by `uv sync`). See [SETUP.md](SETUP.md) for the full per-machine checklist.
 
 ## Pre-flight requirements
 
@@ -62,19 +70,23 @@ The script refuses to start unless the machine is in benchmark-ready state. Conf
 
 ## What gets benchmarked
 
-| # | Benchmark                                  | Reps    | What it stresses              |
-| - | ------------------------------------------ | ------- | ----------------------------- |
-| 0 | Noise floor                                | 20      | Per-machine variance baseline |
-| 1 | Serial compile (`./configure && make -j1`) | 3       | Single-thread compiler perf   |
-| 2 | Parallel compile (`make -j<physical>`)     | 3       | Parallel build scaling        |
-| 3 | Full regression suite (`make test`)        | 3       | Mixed workload                |
-| 4 | SCPSpheresElastic across `-np` sweep       | 5 each  | MPI strong scaling            |
-| 5 | Frame generation (yt + matplotlib)         | 3       | I/O, numpy, matplotlib        |
-| 6 | gifski encode                              | 3       | CPU codec                     |
-| 7 | ffmpeg AV1 (libsvtav1)                     | 3       | CPU codec                     |
-| 8 | ffmpeg H.265 (libx265)                     | 3       | CPU codec                     |
+| # | Benchmark                                                  | Reps                  | What it stresses              |
+| - | ---------------------------------------------------------- | --------------------- | ----------------------------- |
+| 0 | Noise floor (`numpy` matmul)                               | 20                    | Per-machine variance baseline |
+| 1 | Serial compile, all dims (`./configure && make -j1`)       | 2                     | Single-thread compiler perf   |
+| 2 | Parallel compile, all dims (`make -j<physical>`)           | 2                     | Parallel build scaling        |
+| 3 | Regression suite (`./scripts/runtests.py`)                 | 2                     | Mixed workload                |
+| 4 | SCPSpheresElastic across `-np` sweep                       | 5 per `np`            | MPI strong scaling            |
+| 5 | `render_frames` — yt SlicePlot → PNG, one per plotfile     | 5                     | I/O, numpy, matplotlib        |
+| 6 | `render_encode` — gifski / AV1 / H.265 over rendered PNGs  | 5 per codec           | CPU video codec               |
+
+Compile reps build every dimension listed in `[alamo] dims` (production default: `[2, 3]`, since the regression suite needs both 2D and 3D binaries). The reported wall time covers all configured dims combined.
+
+The compiler is **Apple Clang on macOS, LLVM clang on Linux** — both invoked as `clang++` via `$PATH`. This is deliberate: the PI wants benchmark numbers from each machine's vanilla toolchain, not a unified cross-platform stack. The exact compiler version is captured per-machine in the manifest's `platform.tool_versions["clang"]`.
 
 The `-np` sweep is `1, 2, 4, 8, …, physical, physical + virtual`, deduplicated. See [Core topology](#core-topology) for the per-platform definition of physical vs virtual.
+
+`render_frames` and `render_encode` are wired so the encoder always sees a deterministic frame set: `render_frames` writes PNGs to `run_dir/render/frames_rep<N>/`, and `render_encode` picks the most-recently-written `frames_rep*` dir as input. The default config lists `render_frames` immediately before `render_encode` in `[benchmarks].enabled` so the dependency is satisfied without spec ordering tricks.
 
 Per-rep mechanics:
 
@@ -107,17 +119,31 @@ benchmarks/
 ├── topology.py         # P/E/super core detection
 ├── preflight.py        # refuse-to-start gate
 ├── telemetry/
-│   ├── macos.py        # powermetrics + psutil sidecar
-│   └── linux.py        # turbostat + RAPL + psutil sidecar
+│   ├── macos.py        # powermetrics sidecar (sudo)
+│   ├── linux.py        # turbostat sidecar (sudo)
+│   └── sudo.py         # background sudo-ticket keepalive
 ├── runners/            # one file per benchmark
+│   ├── noise_floor.py
+│   ├── compile_runner.py
+│   ├── regression.py
+│   ├── scp_elastic.py
+│   └── render.py       # render_frames + render_encode
 └── storage/            # SQLite schema + writer
 
 configs/
-├── default.toml        # full overnight run
-└── quick.toml          # smoke-test mode
+├── default.toml          # full overnight run (≤12 h budget)
+├── validate.toml         # ~30 min end-to-end sanity check before the overnight
+├── regression_only.toml  # isolate regression-suite timing on a new machine
+└── quick.toml            # noise-floor-only smoke test (harness check)
 
 alamo/                  # git submodule, pinned SHA on `development`
-results/<hostname>/     # per-machine output, committed to git
+results/<machine_id>/   # see SETUP.md §4b — user-declared, network-stable
+└── run_<ts>/           # per-run output dir
+    ├── alamo-benchmark.log   # full run log (mirrors stdout)
+    ├── run_<ts>.db           # SQLite results
+    ├── run_<ts>.manifest.json
+    ├── logs/                 # per-rep subprocess logs (compile, SCP, regression, render)
+    └── render/               # frames_rep*/ + encoded gif/webm/mp4 outputs
 ```
 
 ### Data model
@@ -140,7 +166,7 @@ The choices most likely to come under scrutiny, each with a rationale:
 
 | Decision                                                                                       | Rationale                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PI-grade statistical rigor: 3 reps for long benchmarks, 5+ for short, median + IQR, σ reported | Single-run timings are unreliable. Mean obscures bimodal distributions. Median + IQR is the standard for noisy systems benchmarks.                                                              |
+| PI-grade statistical rigor: 5 reps for short benchmarks (SCP, render), 2 reps for long benchmarks (compile, regression), median + IQR, σ reported | Single-run timings are unreliable. Mean obscures bimodal distributions. Median + IQR is the standard for noisy systems benchmarks. Long benchmarks are capped at 2 reps because the regression suite alone can take 30–90 min/rep on lab hardware — a third rep would push the overnight run past 12 h.                                                                       |
 | Cold build cache between compile reps                                                          | Measures true compile time. Warm-cache benchmarks compare cache hits, not compiler work.                                                                                                        |
 | Sudo-based telemetry (`powermetrics` / `turbostat`)                                            | Per-core frequency and package power are unavailable to user-space. These are the only signals that prove or disprove thermal throttling.                                                       |
 | Turbo boost left ON, characterized in telemetry                                                | Matches how Alamo is actually used in the lab. The telemetry stream shows whether each machine sustained boost or throttled, so the data answers "did this machine throttle?" empirically.       |
@@ -155,11 +181,12 @@ The choices most likely to come under scrutiny, each with a rationale:
 ## Multi-machine workflow
 
 1. Clone this repo on each lab machine (with submodules).
-2. Verify the pre-flight passes (`uv run alamo-benchmark preflight`).
-3. Kick off the full run on each machine in parallel (`uv run alamo-benchmark run`).
-4. Each machine writes to `results/<hostname>/` — no merge conflicts.
-5. Commit and push per-machine results once each run completes.
-6. Aggregate from any machine after pulling.
+2. Declare this machine's `machine_id` once (SETUP.md §4b).
+3. Verify the pre-flight passes (`uv run alamo-benchmark preflight`).
+4. Kick off the full run on each machine in parallel (`uv run alamo-benchmark run`).
+5. Each machine writes to `results/<machine_id>/` — no merge conflicts as long as every machine picks a unique `machine_id`.
+6. Commit and push per-machine results once each run completes.
+7. Aggregate from any machine after pulling.
 
 ## Aggregating across machines
 
@@ -170,22 +197,27 @@ git pull
 sqlite3 <<'SQL'
 .mode column
 .headers on
-ATTACH DATABASE 'results/host-a/run_2026-05-19T03-00-00Z.db' AS host_a;
-ATTACH DATABASE 'results/host-b/run_2026-05-19T03-00-00Z.db' AS host_b;
+ATTACH DATABASE 'results/iastate-m1pro-01/run_2026-05-19T03-00-00Z/run_2026-05-19T03-00-00Z.db' AS host_a;
+ATTACH DATABASE 'results/iastate-xeon-w5-2545/run_2026-05-19T03-00-00Z/run_2026-05-19T03-00-00Z.db' AS host_b;
 -- ...
 
+-- Per-(host, benchmark, config) min / median / max wall time. Median via
+-- PERCENTILE; if your sqlite lacks it, the rank trick (ORDER BY wall_s LIMIT)
+-- is equivalent. Bare AVG is intentionally omitted — see CLAUDE.md.
 SELECT 'host-a' AS host, benchmark, config_json,
-       AVG(wall_s) AS mean_s, MIN(wall_s) AS min_s
-FROM host_a.result WHERE is_warmup = 0 AND status = 'completed'
-GROUP BY benchmark, config_json
-UNION ALL
-SELECT 'host-b', benchmark, config_json, AVG(wall_s), MIN(wall_s)
-FROM host_b.result WHERE is_warmup = 0 AND status = 'completed'
+       MIN(wall_s) AS min_s,
+       (SELECT wall_s FROM host_a.result r2
+        WHERE r2.benchmark = r1.benchmark AND r2.config_json = r1.config_json
+              AND r2.is_warmup = 0 AND r2.status = 'completed'
+        ORDER BY wall_s LIMIT 1 OFFSET (COUNT(*) - 1) / 2) AS median_s,
+       MAX(wall_s) AS max_s
+FROM host_a.result r1
+WHERE is_warmup = 0 AND status = 'completed'
 GROUP BY benchmark, config_json;
 SQL
 ```
 
-A formal aggregation/reporting tool is deliberately out of scope for v1 — the schema is small enough that a notebook is the right shape.
+A formal aggregation/reporting tool is deliberately out of scope for v1 — the schema is small enough that a notebook is the right shape (pandas `read_sql` straight from the attached DBs).
 
 ## License
 
