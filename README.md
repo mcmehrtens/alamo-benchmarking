@@ -32,8 +32,8 @@ Install these manually before cloning. The benchmark does **not** install depend
 **macOS (26+)**:
 
 ```bash
-xcode-select --install                            # Apple Clang, make, git
-brew install open-mpi eigen libpng ffmpeg uv      # Alamo deps + ffmpeg + uv
+xcode-select --install                                  # Apple Clang, make, git
+brew install open-mpi eigen libpng ffmpeg uv tmux       # Alamo deps + ffmpeg + uv + tmux
 # gifski: download a binary release from github.com/ImageOptim/gifski
 ```
 
@@ -44,12 +44,13 @@ brew install open-mpi eigen libpng ffmpeg uv      # Alamo deps + ffmpeg + uv
 ```bash
 sudo apt install build-essential clang libstdc++-14-dev \
                  libopenmpi-dev libeigen3-dev libpng-dev \
-                 ffmpeg linux-tools-generic "linux-tools-$(uname -r)"
+                 ffmpeg linux-tools-generic "linux-tools-$(uname -r)" \
+                 tmux
 # gifski: download a binary release from github.com/ImageOptim/gifski
 # uv: install from astral.sh/uv
 ```
 
-`turbostat` ships in `linux-tools-*` — required for telemetry.
+`turbostat` ships in `linux-tools-*` — required for telemetry. `tmux` is for the SSH-detached overnight workflow (SETUP.md §7a).
 
 Both platforms additionally require `git`, `sudo` (telemetry uses `powermetrics`/`turbostat` which require root), and Python 3.14.5 (managed by `uv sync`). See [SETUP.md](SETUP.md) for the full per-machine checklist.
 

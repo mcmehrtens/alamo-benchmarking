@@ -52,9 +52,9 @@ xcode-select --install
 # Homebrew — https://brew.sh
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Alamo build deps
+# Alamo build deps + tmux (for the SSH-detached run workflow in §7)
 brew update
-brew install openmpi eigen libpng git
+brew install openmpi eigen libpng git tmux
 
 # ffmpeg with AV1 + H.265 encoders for the render benchmark
 brew install ffmpeg
@@ -79,7 +79,7 @@ Mirrors `alamo/.github/workflows/dependencies-ubuntu-24.04.sh` except Python —
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential g++ git curl xz-utils
+sudo apt install -y build-essential g++ git curl xz-utils tmux
 
 # Alamo build deps
 sudo apt install -y libopenmpi-dev libeigen3-dev libpng-dev
@@ -105,18 +105,22 @@ uv python install 3.14.5
 
 ### 2c. Both platforms — gifski (binary release)
 
+The tarball extracts straight into the cwd (LICENSE, linux/, mac/, snap/, win/) — no top-level dir — so unpack into a temp directory and clean up after.
+
 ```bash
-curl -LO https://github.com/ImageOptim/gifski/releases/download/1.34.0/gifski-1.34.0.tar.xz
-tar -xJf gifski-1.34.0.tar.xz
+tmpdir=$(mktemp -d)
+curl -L https://github.com/ImageOptim/gifski/releases/download/1.34.0/gifski-1.34.0.tar.xz \
+    | tar -xJf - -C "$tmpdir"
 # Inspect — release contains prebuilt binaries under per-platform subdirs.
-ls gifski-1.34.0/
+ls "$tmpdir"
 # Install the binary for your platform:
-sudo install -m 0755 gifski-1.34.0/mac/gifski   /usr/local/bin/gifski   # macOS
-sudo install -m 0755 gifski-1.34.0/linux/gifski /usr/local/bin/gifski   # Ubuntu
+sudo install -m 0755 "$tmpdir/mac/gifski"   /usr/local/bin/gifski   # macOS
+sudo install -m 0755 "$tmpdir/linux/gifski" /usr/local/bin/gifski   # Ubuntu
+rm -rf "$tmpdir"
 gifski --version    # verify
 ```
 
-(If the tarball layout differs from what the URL suggests, `find gifski-1.34.0 -name gifski -type f` will surface the binaries.)
+(If the tarball layout differs from what the URL suggests, `find "$tmpdir" -name gifski -type f` will surface the binaries before you clean up.)
 
 ---
 
@@ -369,7 +373,37 @@ Walk away. The overnight run's timing breakdown on the M1 Pro reference:
 
 Total: ~9–11 h. SCP and telemetry sample continuously across all of them.
 
-The run writes everything under `results/<hostname>/run_<ts>/`:
+### 7a. Running over SSH (lab Linux boxes)
+
+A 9–11 h run will outlive any SSH session. Use `tmux` so the run survives disconnects and you can reattach later to watch progress. `tmux` is installed in §2.
+
+```bash
+ssh benchmark@<box>
+tmux new -s alamo                                            # named session "alamo"
+sudo -v                                                      # prime the sudo cache (telemetry keepalive)
+uv run alamo-benchmark run --config configs/default.toml
+# Detach without killing the run:  Ctrl-b  then  d
+# Now safe to disconnect SSH. The benchmark keeps running.
+```
+
+To check in later:
+
+```bash
+ssh benchmark@<box>
+tmux attach -t alamo            # reattach, see live output
+# (or just tail the log without grabbing the session:)
+tail -f results/<machine_id>/run_*/alamo-benchmark.log
+```
+
+If `tmux new -s alamo` reports the session already exists (e.g. you reconnected and forgot you'd detached), use `tmux attach -t alamo` instead — that grabs the existing session. `tmux ls` lists every active session on the box.
+
+The benchmark writes its own log to `results/<machine_id>/run_<ts>/alamo-benchmark.log` regardless of how stdout is captured, so even if `tmux` is killed for some reason, the per-rep output is on disk. Pre-flight failures land there too (the file handler is attached before pre-flight runs).
+
+**Caveat:** suspend/sleep mid-run is the one thing `tmux` can't save you from. Make sure §5b's `systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target` has been applied.
+
+### 7b. Output layout
+
+The run writes everything under `results/<machine_id>/run_<ts>/`:
 - `alamo-benchmark.log` — full run log (mirrors stdout)
 - `run_<ts>.db` — SQLite results
 - `run_<ts>.manifest.json` — platform + preflight + git SHAs
@@ -378,8 +412,8 @@ The run writes everything under `results/<hostname>/run_<ts>/`:
 
 After it finishes, **commit the results**:
 ```bash
-git add results/<hostname>/
-git commit -m "<hostname>: $(date -u +%Y-%m-%d) benchmark run"
+git add results/<machine_id>/
+git commit -m "<machine_id>: $(date -u +%Y-%m-%d) benchmark run"
 git push
 ```
 
