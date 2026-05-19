@@ -105,14 +105,14 @@ The slowest expected lab box is **rowlf** (Xeon E3-1240v6, 4 phys + HT = 8 logic
 | compile_serial (2D+3D, j=1) | ~17 min | 3 | ~50 min |
 | compile_parallel (2D+3D, j=4) | ~4 min | 3 | ~12 min |
 | regression_suite | ~65 min | 3 | ~3.3 h |
-| scp_elastic (np=1,2,4,8) | sweep ≈ 58 min | 6 | ~5.8 h |
+| scp_elastic (np=1,2,4,8) | sweep ≈ 60 min | 6 | ~6 h |
 | render frames + encode | ~30 s | 12 | ~6 min |
 | cooldowns (30 s × ~50 reps) | | | ~25 min |
-| **Total on rowlf** | | | **~10.8 h** |
+| **Total on rowlf** | | | **~10.5 h** |
 
-That gives ~1 h margin under the 12 h ceiling for regression-suite variability and miscellaneous noise.
+That gives ~1.5 h margin under the 12 h ceiling for regression-suite variability and miscellaneous noise.
 
-The SCP sizing comes from a rowlf validate at `stop_time = 0.0001_s`: per-rep sweep totaled 17.7 s. `default.toml`'s `stop_time = 0.02_s` is 200× that, so the sweep extrapolates to ~58 min/rep on rowlf. Faster lab boxes finish proportionally sooner.
+The SCP sizing comes from a rowlf validate at `stop_time = 0.002_s`: per-rep sweep totaled 7.86 min. `default.toml`'s `stop_time = 0.015_s` is 7.5× that, so the sweep extrapolates to ~60 min/rep on rowlf. Faster lab boxes finish proportionally sooner. An earlier guess of `0.02_s` (extrapolated from a much smaller `0.0001_s` validate) overshot — the per-step cost grows slightly super-linearly out of the overhead-dominated regime, so always size from a validate that's already in the same order of magnitude as the target.
 
 **Historical (pre-2026-05-19, 3D, M1 Pro):** the old reference table used `stop_time = 0.001_s` in 3D on M1 Pro: np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min. These numbers are no longer applicable — `scp_elastic` runs in 2D now (see "Multi-dim compile builds" for the Alamo BC bug that forced the switch). If/when `dim = 3` becomes viable again, completely re-baseline `stop_time` from a fresh validate — the 3D per-step cost is dramatically higher than 2D and the old table would massively overshoot the budget.
 
