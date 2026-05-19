@@ -28,7 +28,7 @@ Detect via `sysctl machdep.cpu.brand_string`, then map perflevels:
 Heuristic if a future chip's brand string is unrecognized: if `perflevel1` cores have comparable L2 cache size to `perflevel0` (within ~2×), assume both are "physical-class" and warn loudly. If `perflevel1` is much smaller, it's an efficiency tier — treat as virtual.
 
 ### MPI affinity is platform-specific
-On Linux, OpenMPI honors `--bind-to core --map-by core` and pinning is reliable — `scp_elastic.run_one` passes those flags explicitly. On macOS, OpenMPI/PRRTE has no hwloc binding support and an `mpiexec` invocation that includes them aborts with exit 213; the runner therefore omits the flags on Darwin and accepts whatever placement the OS scheduler chooses. In both cases we set `OMPI_MCA_orte_report_bindings=1` so the actual binding (or its absence) is visible in the per-rep log. Parsing that stderr into the result row is still on the TODO list in `scp_elastic.run_one`.
+On Linux, OpenMPI honors `--bind-to core --map-by core` and pinning is reliable — `scp_elastic.run_one` passes those flags explicitly. On macOS, OpenMPI/PRRTE has no hwloc binding support and an `mpiexec` invocation that includes them aborts with exit 213; the runner therefore omits the flags on Darwin and accepts whatever placement the OS scheduler chooses. In both cases we set `OMPI_MCA_orte_report_bindings=1` so the runtime prints one `MCW rank N bound to socket S[core C[hwt H]]` line per rank to stderr. After the subprocess exits, `parse_mpi_bindings` extracts a structured summary (ranks bound vs unbound, distinct sockets/cores, `one_rank_per_core` flag) and `result.notes` carries a one-line readout like `affinity: bound=8/8 sockets=[0] cores=[0,1,2,3,4,5,6,7]`. The full stderr is also preserved in the per-rep log file for forensic detail.
 
 ### Cold cache means cold cache
 Before each compile rep:
@@ -149,8 +149,8 @@ Runners themselves are integration-tested via `--mode quick`, which exercises th
 - Alamo pinned as a submodule on the `development` branch.
 
 **Deliberately deferred to a follow-up:**
-- **MPI affinity instrumentation:** we set `OMPI_MCA_orte_report_bindings=1` but don't yet parse the resulting stderr into the result row — TODO in `scp_elastic.run_one`. On macOS the runner already skips `--bind-to`/`--map-by` (PRRTE has no hwloc binding support on Darwin), so the "did pinning happen?" answer is "no" by construction; on Linux we still need to parse stderr to confirm what actually pinned.
 - **Multi-node MPI:** single-node only.
 - **Aggregation CLI:** SQLite `ATTACH` is the v1 interface — see README "Aggregating across machines".
-- **Power-cap awareness on Linux:** add a pre-flight check that reads RAPL caps.
-- **End-to-end telemetry validation on a real lab machine:** parsers are fixture-verified, but the `sudo + subprocess + writer` path has only been smoke-tested locally. First overnight run on each lab box will exercise it for real.
+- **End-to-end telemetry validation on a real lab machine:** parsers are fixture-verified (M1 Pro / M4 Pro / M5 Pro / Xeon W-1370 / W5-2545 / E3-1240v6), but the `sudo + subprocess + writer` path has only been smoke-tested locally. First overnight run on each lab box will exercise it for real.
+- **MPI affinity instrumentation:** ✅ **Done** — `parse_mpi_bindings` extracts a structured `MpiBindings` from the OpenMPI stderr; summary goes into `result.notes`. Unit-tested against bound / unbound / oversubscribed / dual-socket / noisy-stderr cases.
+- **Power-cap awareness on Linux:** ✅ **Done** — `_check_rapl` reads `/sys/class/powercap/intel-rapl:<N>/constraint_0_power_limit_uw` vs `constraint_0_max_power_uw` per package and flags advisory if PL1 < 80% of max. Skips cleanly on macOS / AMD / kernels without RAPL.

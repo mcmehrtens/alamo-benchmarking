@@ -62,6 +62,7 @@ def run_preflight(
     add(_check_perf_mode(cfg, system))
     add(_check_governor(cfg, system))
     add(_check_turbo(system))
+    add(_check_rapl(system))
     add(_check_load(cfg))
     add(_check_disk(cfg, output_dir))
     add(_check_uptime(cfg))
@@ -156,6 +157,67 @@ def _check_turbo(system: str) -> CheckResult:
     return CheckResult(
         "turbo_boost", no_turbo == "0", f"no_turbo={no_turbo}", "no_turbo=0", "advisory"
     )
+
+
+# Fraction of `constraint_0_max_power_uw` (the package's stated maximum / TDP-class
+# value) below which we treat PL1 as "significantly throttled". Lab boxes set to
+# 80% of TDP for thermal headroom are common and acceptable; anything below this
+# is suspicious enough to surface in the manifest.
+_RAPL_PL1_THRESHOLD = 0.80
+_RAPL_ROOT = Path("/sys/class/powercap")
+
+
+def _check_rapl(system: str, *, root: Path = _RAPL_ROOT) -> CheckResult:
+    """Verify Intel RAPL PL1 isn't capping the package well below its rated max.
+
+    Reads each `intel-rapl:<N>` package's `constraint_0_power_limit_uw` (PL1, the
+    long-term sustained limit) and compares it to `constraint_0_max_power_uw`
+    (the highest value PL1 can be set to, typically the chip's TDP). If any
+    package is running PL1 below `_RAPL_PL1_THRESHOLD` of its max, that means
+    something (firmware, OEM tuning, thermal cap) has dialed the sustained
+    budget down — Alamo's wall times on that box would not be comparable to a
+    box at TDP.
+
+    Advisory only. Pre-flight is observe-only (see CLAUDE.md): we report,
+    user decides. Skips cleanly on macOS, AMD, or kernels without RAPL exposed.
+    """
+    if system != "Linux":
+        return CheckResult("rapl_pl1", True, "n/a (no RAPL on macOS)", "PL1 ~= max", "advisory")
+    if not root.is_dir():
+        return CheckResult(
+            "rapl_pl1", True, "powercap sysfs missing", "PL1 ~= max", "advisory"
+        )
+    package_dirs = sorted(p for p in root.iterdir() if p.name.startswith("intel-rapl:"))
+    # Filter to top-level package zones (the `:N` form; sub-zones look like `:N:M`).
+    package_dirs = [p for p in package_dirs if p.name.count(":") == 1]
+    if not package_dirs:
+        return CheckResult(
+            "rapl_pl1", True, "no intel-rapl packages", "PL1 ~= max", "advisory"
+        )
+
+    summaries: list[str] = []
+    ok = True
+    for pkg in package_dirs:
+        pl1_uw = _read_int(pkg / "constraint_0_power_limit_uw")
+        max_uw = _read_int(pkg / "constraint_0_max_power_uw")
+        if pl1_uw is None or max_uw is None or max_uw <= 0:
+            summaries.append(f"{pkg.name}=unreadable")
+            continue
+        ratio = pl1_uw / max_uw
+        summaries.append(f"{pkg.name}=PL1 {pl1_uw / 1_000_000:.0f}W/{max_uw / 1_000_000:.0f}W")
+        if ratio < _RAPL_PL1_THRESHOLD:
+            ok = False
+    observed = "; ".join(summaries)
+    required = f"PL1 >= {int(_RAPL_PL1_THRESHOLD * 100)}% of max per package"
+    return CheckResult("rapl_pl1", ok, observed, required, "advisory")
+
+
+def _read_int(path: Path) -> int | None:
+    """Read a single integer from a sysfs node, or None if missing/unparseable."""
+    try:
+        return int(path.read_text().strip())
+    except (OSError, ValueError):
+        return None
 
 
 def _check_load(cfg: PreflightConfig) -> CheckResult:
