@@ -23,7 +23,14 @@ cooldown_seconds = 30    # pause between reps to let thermals settle
 require_ac = true
 require_governor = "performance"      # linux only
 require_macos_perf_mode = true        # High Power Mode on macOS
-max_load_1min = 0.5
+# Even an idle Linux server has some baseline from kernel threads, the SSH
+# session itself, and routine system services. 0.5 was set as a "machine must
+# be silent" gate but is unrealistic in practice — rowlf couldn't hit it even
+# with nothing user-launched running. 1.5 catches "another user is heavily
+# using this box" (compile job, simulation, etc.) while tolerating the normal
+# system baseline. Override with `--force` if you really mean to run on a
+# loaded box; the failure is still recorded in the manifest either way.
+max_load_1min = 1.5
 min_disk_free_gb = 50
 max_uptime_days = 14
 
