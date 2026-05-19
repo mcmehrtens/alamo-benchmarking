@@ -42,6 +42,7 @@ class SCPElasticBenchmark(Benchmark):
         )
         warmups = ctx.config.statistics.warmup_reps
         reps = ctx.config.statistics.reps_short
+        dim = ctx.config.benchmarks.scp_elastic_dim
         for np_count in sweep:
             for i in range(warmups + reps):
                 yield RunSpec(
@@ -49,6 +50,7 @@ class SCPElasticBenchmark(Benchmark):
                     config={
                         "np": np_count,
                         "stop_time": ctx.config.benchmarks.scp_elastic_stop_time,
+                        "dim": dim,
                     },
                     rep_index=i,
                     is_warmup=(i < warmups),
@@ -58,11 +60,12 @@ class SCPElasticBenchmark(Benchmark):
     def run_one(self, spec: RunSpec, ctx: RunContext) -> RunResult:
         np_count = int(spec.config["np"])
         stop_time = str(spec.config["stop_time"])
+        dim = int(spec.config["dim"])
         log_path = ctx.log_dir / f"scp_np{np_count}_rep{spec.rep_index}.log"
         started_at = utc_now()
         t0 = time.perf_counter()
 
-        binary = _find_alamo_binary(ctx.alamo_dir, ctx.config.alamo.compiler)
+        binary = _find_alamo_binary(ctx.alamo_dir, ctx.config.alamo.compiler, dim)
         if binary is None:
             return RunResult(
                 spec=spec,
@@ -72,8 +75,8 @@ class SCPElasticBenchmark(Benchmark):
                 exit_code=-1,
                 status="failed",
                 notes=(
-                    f"no Alamo binary found under {ctx.alamo_dir}/bin/ matching "
-                    f"alamo-*-{ctx.config.alamo.compiler}; build first"
+                    f"no Alamo binary at {ctx.alamo_dir}/bin/alamo-{dim}d-"
+                    f"{ctx.config.alamo.compiler}; build first"
                 ),
             )
 
@@ -89,8 +92,19 @@ class SCPElasticBenchmark(Benchmark):
         # no binding support on Darwin and the run aborts with exit 213. On
         # Linux affinity is reliable; ask for it explicitly so we get a
         # repeatable pinning.
+        #
+        # `--use-hwthread-cpus` makes OpenMPI count hardware threads (not just
+        # physical cores) as slots. Without it, np = physical + virtual gets
+        # rejected as "not enough slots" on an HT-enabled Xeon (default slot
+        # count = physical cores in OpenMPI 4.x). The topology auto-sweep
+        # deliberately includes physical+virtual, so we need the HT siblings
+        # to count.
         if platform.system() != "Darwin":
-            cmd += ["--bind-to", "core", "--map-by", "core"]
+            cmd += [
+                "--bind-to", "core",
+                "--map-by", "core",
+                "--use-hwthread-cpus",
+            ]
         cmd += [
             str(binary),
             _INPUT_REL,
@@ -127,13 +141,10 @@ class SCPElasticBenchmark(Benchmark):
         )
 
 
-def _find_alamo_binary(alamo_dir: Path, compiler: str) -> Path | None:
-    """Return the path to `alamo-*-{compiler}` under `alamo/bin/`, or None."""
-    bin_dir = alamo_dir / "bin"
-    if not bin_dir.is_dir():
-        return None
-    candidates = sorted(bin_dir.glob(f"alamo-*-{compiler}"))
-    return candidates[0] if candidates else None
+def _find_alamo_binary(alamo_dir: Path, compiler: str, dim: int) -> Path | None:
+    """Return the path to `alamo-{dim}d-{compiler}` under `alamo/bin/`, or None."""
+    candidate = alamo_dir / "bin" / f"alamo-{dim}d-{compiler}"
+    return candidate if candidate.is_file() else None
 
 
 _BINDING_RE = re.compile(

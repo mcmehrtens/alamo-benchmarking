@@ -32,7 +32,7 @@ max_uptime_days = 365
 [alamo]
 build_target = "tests/SCPSpheresElastic/input"
 compiler = "clang++"
-dims = [3]                     # 3D only — validate skips regression_suite so 2D not needed
+dims = [2]                     # 2D only — scp_elastic runs in 2D (see [benchmarks.scp_elastic])
 
 [telemetry]
 sample_interval_seconds = 1
@@ -59,6 +59,7 @@ enabled = [
 # not to gather production data.
 stop_time = "0.0001_s"
 extra_core_counts = []          # rely on the topology auto-sweep
+dim = 2                         # 2D — see default.toml for the rationale
 
 [benchmarks.render]
 codecs = ["gifski"]

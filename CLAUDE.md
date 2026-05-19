@@ -28,7 +28,7 @@ Detect via `sysctl machdep.cpu.brand_string`, then map perflevels:
 Heuristic if a future chip's brand string is unrecognized: if `perflevel1` cores have comparable L2 cache size to `perflevel0` (within ~2×), assume both are "physical-class" and warn loudly. If `perflevel1` is much smaller, it's an efficiency tier — treat as virtual.
 
 ### MPI affinity is platform-specific
-On Linux, OpenMPI honors `--bind-to core --map-by core` and pinning is reliable — `scp_elastic.run_one` passes those flags explicitly. On macOS, OpenMPI/PRRTE has no hwloc binding support and an `mpiexec` invocation that includes them aborts with exit 213; the runner therefore omits the flags on Darwin and accepts whatever placement the OS scheduler chooses. In both cases we set `OMPI_MCA_orte_report_bindings=1` so the runtime prints one `MCW rank N bound to socket S[core C[hwt H]]` line per rank to stderr. After the subprocess exits, `parse_mpi_bindings` extracts a structured summary (ranks bound vs unbound, distinct sockets/cores, `one_rank_per_core` flag) and `result.notes` carries a one-line readout like `affinity: bound=8/8 sockets=[0] cores=[0,1,2,3,4,5,6,7]`. The full stderr is also preserved in the per-rep log file for forensic detail.
+On Linux, OpenMPI honors `--bind-to core --map-by core` and pinning is reliable — `scp_elastic.run_one` passes those flags explicitly, plus `--use-hwthread-cpus` so the topology's `physical + virtual` sweep target isn't rejected as "not enough slots" by OpenMPI 4.x's physical-cores-only slot accounting. On macOS, OpenMPI/PRRTE has no hwloc binding support and an `mpiexec` invocation that includes any of these aborts with exit 213; the runner therefore omits the flags on Darwin and accepts whatever placement the OS scheduler chooses. In both cases we set `OMPI_MCA_orte_report_bindings=1` so the runtime prints one `MCW rank N bound to socket S[core C[hwt H]]` line per rank to stderr. After the subprocess exits, `parse_mpi_bindings` extracts a structured summary (ranks bound vs unbound, distinct sockets/cores, `one_rank_per_core` flag) and `result.notes` carries a one-line readout like `affinity: bound=8/8 sockets=[0] cores=[0,1,2,3,4,5,6,7]`. The full stderr is also preserved in the per-rep log file for forensic detail.
 
 ### Cold cache means cold cache
 Before each compile rep:
@@ -70,7 +70,14 @@ The benchmark builds Alamo with the **default per-OS** compiler the PI considers
 Config `[alamo] compiler = "clang++"` is correct for **both** — `$PATH` resolves to the right binary. Don't try to pin paths or unify. The actual compiler version (Apple vs LLVM, version number) is captured in `platform_info.tool_versions["clang"]` and surfaces in the manifest, so the distinction is recorded unambiguously per-machine. An earlier draft of the requirements said "LLVM on both"; that's superseded — do not standardize.
 
 ### Multi-dim compile builds
-`compile_serial` and `compile_parallel` build every dimension in `[alamo] dims` per rep (`./configure --dim=<D> --comp=<compiler>` then `make`, repeated for each `D`). Default is `[3]`; production is `[2, 3]` because Alamo's regression suite needs both 2D and 3D binaries. The wall-clock for a rep covers all dims combined — that's the "build Alamo from scratch" timing a new lab user would experience. Cold cache (`git clean -fdx`) wipes everything including cloned AMReX once per rep, BEFORE the first dim; subsequent dims in the same rep reuse the per-dim build output dirs Alamo creates (e.g., `ext/AMReX-Codes/amrex/2d-clang++-26.02` vs `3d-...`).
+`compile_serial` and `compile_parallel` build every dimension in `[alamo] dims` per rep (`./configure --dim=<D> --comp=<compiler>` then `make`, repeated for each `D`). Production (`default.toml`) is `[2, 3]` because:
+
+- `scp_elastic` currently runs in 2D (`[benchmarks.scp_elastic] dim = 2` — see "Timing budget" below for why) → 2D binary required
+- `regression_suite` exercises both 2D and 3D test sections → both binaries required
+
+If `dim = 3` ever becomes viable for `scp_elastic` again, leave production at `[2, 3]`; if `regression_suite` is disabled and SCP stays 2D, `[2]` alone is sufficient (`validate.toml` does exactly this).
+
+The wall-clock for a rep covers all dims combined — that's the "build Alamo from scratch" timing a new lab user would experience. Cold cache (`git clean -fdx -e .venv`) wipes everything including cloned AMReX once per rep, BEFORE the first dim; subsequent dims in the same rep reuse the per-dim build output dirs Alamo creates (e.g., `ext/AMReX-Codes/amrex/2d-clang++-26.02` vs `3d-...`).
 
 ### Regression suite invokes runtests.py directly
 The `regression_suite` benchmark runs `./scripts/runtests.py --comp <compiler>`, **not** `make test`. The Makefile's `test` target chains in `check_tabs.py` and `make docs`, which are unrelated to what we're benchmarking and frequently break for unrelated reasons. `runtests.py` does not build Alamo — it expects pre-built binaries at `bin/{exe}-{dim}d-{comp}`, so a `compile_*` rep MUST run first and MUST have built every dim the regression suite needs. FFT tests are opt-in via `--fft`; we don't add that flag.
@@ -88,10 +95,13 @@ Encoder commands include `-vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"` because yt's matp
 Every `run` invocation tees the root logger to `run_dir/alamo-benchmark.log`. The handler is attached BEFORE preflight runs so a preflight failure is captured on disk too. `_print_preflight` deliberately calls both `print` (for the operator watching stdout) and `LOG.info` (so the file gets the same lines). Per-rep subprocess output (compile logs, regression logs, SCP logs, frame-render logs) lives separately under `run_dir/logs/`.
 
 ### Timing budget on the slowest machine
-On the M1 Pro fixture machine, a full `scp_elastic` sweep at `stop_time = 0.001_s` (1000 timesteps) took 229 min wall. The on-disk Alamo `input` specifies `stop_time = 0.11_s` — running it as-is is 110× longer than 0.001 (≈6 days/rep at np=1). `configs/default.toml` overrides to `stop_time = 0.0003_s` (≈68 min/sweep) and caps `reps_long = 2`, giving an overnight budget of ~9–11 h on M1 Pro. Reference per-rep timings at `0.001_s` on M1 Pro:
-- np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min.
+On the M1 Pro fixture machine, a full **3D** `scp_elastic` sweep at `stop_time = 0.001_s` (1000 timesteps) took 229 min wall: np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min.
 
-If a future agent considers raising `stop_time` "to be more thorough", verify the new total wall time against this reference first.
+These numbers are **stale as of 2026-05-19** — `scp_elastic` now runs in 2D (`[benchmarks.scp_elastic] dim = 2`) to avoid an upstream Alamo bug in `BC/Operator/Elastic/Constant.H` that reads `AMREX_SPACEDIM` BC entries when the `tests/SCPSpheresElastic/input` file only supplies 2 (correct for 2D, OOB on 3D). The 2D path is much cheaper per step. Re-baseline against `validate.toml` output on each lab machine before tightening `default.toml`'s `stop_time` — don't extrapolate from the 3D table above.
+
+The 3D reference is preserved here for the day the Alamo bug is fixed and `dim = 3` becomes viable again. At that point, restore the 3D budget calculation.
+
+If a future agent considers raising `stop_time` "to be more thorough", verify the new total wall time against a fresh `validate.toml` run first.
 
 ## Conventions
 

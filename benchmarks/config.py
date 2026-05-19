@@ -46,6 +46,7 @@ class BenchmarksConfig:
     enabled: tuple[str, ...]
     scp_elastic_extra_core_counts: tuple[int, ...]
     scp_elastic_stop_time: str
+    scp_elastic_dim: int
     regression_skip_tests: tuple[str, ...]
     render_codecs: tuple[str, ...]
     render_frame_resolution: tuple[int, int]
@@ -119,6 +120,7 @@ def load_config(path: Path) -> Config:
                 int(x) for x in scp_cfg.get("extra_core_counts", [])
             ),
             scp_elastic_stop_time=str(scp_cfg.get("stop_time", "0.001_s")),
+            scp_elastic_dim=int(scp_cfg.get("dim", 2)),
             regression_skip_tests=tuple(str(x) for x in reg_cfg.get("skip_tests", [])),
             render_codecs=tuple(
                 str(x) for x in render_cfg.get("codecs", ["gifski", "av1", "h265"])

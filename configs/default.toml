@@ -85,21 +85,30 @@ skip_tests = [
 # Sweep is auto-generated as 1, 2, 4, 8, ..., physical, physical + virtual.
 # Add explicit additional values here if needed.
 extra_core_counts = []
+# Simulation dimensionality. We run SCPSpheresElastic as a 2D slice instead of
+# the original 3D volume because `alamo/src/BC/Operator/Elastic/Constant.H`
+# reads `AMREX_SPACEDIM` BC entries per edge/corner but the test's `input`
+# file only provides 2 entries (correct for 2D, OOB read in 3D). The OOB
+# manifests as a segfault on Linux/glibc (heap layout puts a deref-fatal
+# pointer at the 3rd slot) and silently runs through on macOS/libc++.
+#
+# Switching to 2D side-steps the bug entirely (AMREX_SPACEDIM == 2 matches the
+# input). Physically, the 2D run is a planar slice of the 3D propellant
+# microstructure — same solver, same parallel structure, smaller domain.
+# Strong-scaling timings stay informative; absolute wall times don't compare to
+# the 3D reference numbers in CLAUDE.md.
+#
+# If/when the upstream Alamo bug is fixed, switch this back to 3 and re-baseline
+# timings against CLAUDE.md's reference table.
+dim = 2
 # Simulated time per rep.
 #
-# The on-disk `tests/SCPSpheresElastic/input` runs to 0.11 s of simulated time —
-# at the per-step cost we measured (≈5.5 s/step single-core on an M1 Pro), that's
-# 6+ days of wall time per rep, completely outside an overnight budget. We
-# override `stop_time` from this config so 12 h is achievable.
-#
-# Reference timings on the M1 Pro at `stop_time = "0.001_s"` (1000 steps):
-#   np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min
-#   sweep total ≈ 229 min / rep
-#
-# At `stop_time = "0.0003_s"` (300 steps) the sweep is ≈68 min/rep — with the
-# warmup + 5 reps we have ≈7 h of SCP work on the slowest expected machine, and
-# enough AMR regrid cycles (3 at base_regrid_int=100) for the scaling signal to
-# be meaningful. Faster lab boxes finish proportionally sooner.
+# The on-disk `tests/SCPSpheresElastic/input` runs to 0.11 s of simulated time.
+# At 2D, a single step is much faster than the 3D reference in CLAUDE.md.
+# Re-baseline with `validate.toml` before adjusting this — the previous 3D
+# reference at `0.0003_s` (~7 h overall SCP wall on M1 Pro) is no longer
+# applicable. As an initial conservative guess, leave this at the 3D value;
+# `validate.toml` will surface the actual 2D timings.
 stop_time = "0.0003_s"
 
 [benchmarks.render]

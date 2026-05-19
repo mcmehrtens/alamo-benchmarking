@@ -49,6 +49,7 @@ enabled = [
 [benchmarks.scp_elastic]
 extra_core_counts = []
 stop_time = "0.0001_s"
+dim = 2
 
 [benchmarks.render]
 codecs = ["gifski"]
