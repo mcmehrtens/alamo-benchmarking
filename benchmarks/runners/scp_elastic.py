@@ -85,6 +85,10 @@ class SCPElasticBenchmark(Benchmark):
         rep_out_abs = ctx.alamo_dir / rep_out_rel
 
         env = os.environ.copy()
+        # The env var is documented but OpenMPI 4.1.6 (validated on Xeon E3-1240v6)
+        # ignored it in practice — nothing appeared in stderr. Kept for OpenMPI
+        # versions that DO honor it; the explicit `--report-bindings` flag below
+        # is what actually drives the output on 4.1.x.
         env["OMPI_MCA_orte_report_bindings"] = "1"
 
         cmd = ["mpiexec", "-np", str(np_count)]
@@ -99,11 +103,18 @@ class SCPElasticBenchmark(Benchmark):
         # count = physical cores in OpenMPI 4.x). The topology auto-sweep
         # deliberately includes physical+virtual, so we need the HT siblings
         # to count.
+        #
+        # `--report-bindings` makes mpiexec emit one `MCW rank N bound to
+        # socket S[core C[hwt H]]` line per rank to stderr. The
+        # `OMPI_MCA_orte_report_bindings` env var SHOULD do the same thing
+        # but OpenMPI 4.1.6 didn't honor it on the Xeon E3-1240v6 fixture
+        # box — the flag is the reliable form.
         if platform.system() != "Darwin":
             cmd += [
                 "--bind-to", "core",
                 "--map-by", "core",
                 "--use-hwthread-cpus",
+                "--report-bindings",
             ]
         cmd += [
             str(binary),
