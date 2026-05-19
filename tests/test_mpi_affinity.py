@@ -84,6 +84,43 @@ def test_hwthread_seen_when_present() -> None:
     assert info.hwts == [1]
 
 
+def test_hwt_range_form_parses() -> None:
+    """`--use-hwthread-cpus` makes OpenMPI 4.x emit `hwt 0-1` (a range
+    spanning both HT siblings) instead of `hwt 0`. Real capture from the
+    Xeon E3-1240v6 fixture machine, 2026-05-19."""
+    stderr = """\
+[rowlf:20271] MCW rank 0 bound to socket 0[core 0[hwt 0-1]]: [BB/../../..]
+[rowlf:20271] MCW rank 1 bound to socket 0[core 1[hwt 0-1]]: [../BB/../..]
+[rowlf:20271] MCW rank 2 bound to socket 0[core 2[hwt 0-1]]: [../../BB/..]
+[rowlf:20271] MCW rank 3 bound to socket 0[core 3[hwt 0-1]]: [../../../BB]
+"""
+    info = parse_mpi_bindings(stderr)
+    assert info.ranks_bound == 4
+    assert info.sockets == [0]
+    assert info.cores == [0, 1, 2, 3]
+    assert info.hwts == [0, 1]  # range "0-1" expanded into both indices
+    assert info.one_rank_per_core is True
+
+
+def test_hwt_comma_list_form_parses() -> None:
+    """Per OpenMPI docs, comma-separated lists are also valid (`hwt 0,2`).
+    We've never seen this in the wild but the parser should handle it."""
+    stderr = "[box:1] MCW rank 0 bound to socket 0[core 0[hwt 0,2,3]]: [B...][....]"
+    info = parse_mpi_bindings(stderr)
+    assert info.ranks_bound == 1
+    assert info.hwts == [0, 2, 3]
+
+
+def test_malformed_hwt_token_does_not_crash() -> None:
+    """Garbage in the hwt field shouldn't raise — affinity is observational,
+    never fatal. The rest of the binding fields should still parse."""
+    stderr = "[box:1] MCW rank 0 bound to socket 0[core 5[hwt junk]]: [.....B]"
+    # _BINDING_RE requires [\d,-]+ so "junk" won't match — this line simply
+    # won't be picked up. That's the desired soft-fail behavior.
+    info = parse_mpi_bindings(stderr)
+    assert info.ranks_bound == 0
+
+
 def test_extra_noise_ignored() -> None:
     """Real stderr contains lots of unrelated noise — Alamo banner, MPI init
     chatter, etc. The parser should pick out only binding lines."""

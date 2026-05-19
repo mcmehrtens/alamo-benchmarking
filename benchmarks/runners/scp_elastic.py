@@ -160,7 +160,11 @@ def _find_alamo_binary(alamo_dir: Path, compiler: str, dim: int) -> Path | None:
 
 _BINDING_RE = re.compile(
     r"MCW rank\s+(?P<rank>\d+)\s+bound to\s+"
-    r"socket\s+(?P<socket>\d+)\[core\s+(?P<core>\d+)\[hwt\s+(?P<hwt>\d+)\]\]"
+    # `hwt` may be a single index (`hwt 0`) or a range (`hwt 0-1`) when
+    # --use-hwthread-cpus lets the rank float between both HT siblings of a
+    # core. Comma-separated lists (`hwt 0,1`) are also valid per the OpenMPI
+    # docs. Capture the whole token so any of these forms parse cleanly.
+    r"socket\s+(?P<socket>\d+)\[core\s+(?P<core>\d+)\[hwt\s+(?P<hwt>[\d,-]+)\]\]"
 )
 _UNBOUND_RE = re.compile(r"MCW rank\s+(?P<rank>\d+)\s+is not bound")
 
@@ -181,12 +185,48 @@ class MpiBindings:
     one_rank_per_core: bool = False
 
 
+def _parse_hwt_token(token: str) -> set[int]:
+    """Expand the `hwt` field into a set of hwthread indices.
+
+    OpenMPI prints any of:
+      - ``0``         single thread
+      - ``0-1``       range (HT-pair when `--use-hwthread-cpus` is on)
+      - ``0,2,3``     comma-separated list
+
+    Returns an empty set if the token is unparseable rather than raising —
+    affinity parsing is observational, never fatal.
+    """
+    out: set[int] = set()
+    for raw_piece in token.split(","):
+        piece = raw_piece.strip()
+        if not piece:
+            continue
+        if "-" in piece:
+            lo_s, _, hi_s = piece.partition("-")
+            try:
+                lo, hi = int(lo_s), int(hi_s)
+            except ValueError:
+                continue
+            if lo <= hi:
+                out.update(range(lo, hi + 1))
+        else:
+            try:
+                out.add(int(piece))
+            except ValueError:
+                continue
+    return out
+
+
 def parse_mpi_bindings(stderr_text: str) -> MpiBindings:
-    """Parse OpenMPI's `OMPI_MCA_orte_report_bindings=1` output.
+    """Parse OpenMPI's `--report-bindings` output.
 
     Each bound rank emits a line like::
 
         [host:pid] MCW rank 3 bound to socket 0[core 3[hwt 0]]: [..../.B/...]
+
+    With `--use-hwthread-cpus`, the `hwt` field can be a range (`hwt 0-1`)
+    indicating the rank may use either HT sibling on that core. The parser
+    handles single indices, ranges, and comma-separated lists.
 
     Unbound ranks emit `[...] MCW rank N is not bound`. Empty stderr (e.g.
     macOS, where we don't request binding) parses to an all-zero ``MpiBindings``.
@@ -200,7 +240,7 @@ def parse_mpi_bindings(stderr_text: str) -> MpiBindings:
         bound.add(int(m.group("rank")))
         sockets.add(int(m.group("socket")))
         cores.add(int(m.group("core")))
-        hwts.add(int(m.group("hwt")))
+        hwts.update(_parse_hwt_token(m.group("hwt")))
         rank_core_pairs.add((int(m.group("socket")), int(m.group("core"))))
     unbound = {int(m.group("rank")) for m in _UNBOUND_RE.finditer(stderr_text)}
     return MpiBindings(

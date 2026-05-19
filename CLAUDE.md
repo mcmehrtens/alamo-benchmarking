@@ -97,13 +97,26 @@ Encoder commands include `-vf "pad=ceil(iw/2)*2:ceil(ih/2)*2"` because yt's matp
 Every `run` invocation tees the root logger to `run_dir/alamo-benchmark.log`. The handler is attached BEFORE preflight runs so a preflight failure is captured on disk too. `_print_preflight` deliberately calls both `print` (for the operator watching stdout) and `LOG.info` (so the file gets the same lines). Per-rep subprocess output (compile logs, regression logs, SCP logs, frame-render logs) lives separately under `run_dir/logs/`.
 
 ### Timing budget on the slowest machine
-On the M1 Pro fixture machine, a full **3D** `scp_elastic` sweep at `stop_time = 0.001_s` (1000 timesteps) took 229 min wall: np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min.
+The slowest expected lab box is **rowlf** (Xeon E3-1240v6, 4 phys + HT = 8 logical). `default.toml`'s budget is sized against it:
 
-These numbers are **stale as of 2026-05-19** — `scp_elastic` now runs in 2D (`[benchmarks.scp_elastic] dim = 2`) to avoid an upstream Alamo bug in `BC/Operator/Elastic/Constant.H` that reads `AMREX_SPACEDIM` BC entries when the `tests/SCPSpheresElastic/input` file only supplies 2 (correct for 2D, OOB on 3D). The 2D path is much cheaper per step. Re-baseline against `validate.toml` output on each lab machine before tightening `default.toml`'s `stop_time` — don't extrapolate from the 3D table above.
+| Stage | Per-rep | Reps | Total |
+|---|---|---|---|
+| noise_floor | 0.9 s | 20 | < 1 min |
+| compile_serial (2D+3D, j=1) | ~17 min | 3 | ~50 min |
+| compile_parallel (2D+3D, j=4) | ~4 min | 3 | ~12 min |
+| regression_suite | ~65 min | 3 | ~3.3 h |
+| scp_elastic (np=1,2,4,8) | sweep ≈ 58 min | 6 | ~5.8 h |
+| render frames + encode | ~30 s | 12 | ~6 min |
+| cooldowns (30 s × ~50 reps) | | | ~25 min |
+| **Total on rowlf** | | | **~10.8 h** |
 
-The 3D reference is preserved here for the day the Alamo bug is fixed and `dim = 3` becomes viable again. At that point, restore the 3D budget calculation.
+That gives ~1 h margin under the 12 h ceiling for regression-suite variability and miscellaneous noise.
 
-If a future agent considers raising `stop_time` "to be more thorough", verify the new total wall time against a fresh `validate.toml` run first.
+The SCP sizing comes from a rowlf validate at `stop_time = 0.0001_s`: per-rep sweep totaled 17.7 s. `default.toml`'s `stop_time = 0.02_s` is 200× that, so the sweep extrapolates to ~58 min/rep on rowlf. Faster lab boxes finish proportionally sooner.
+
+**Historical (pre-2026-05-19, 3D, M1 Pro):** the old reference table used `stop_time = 0.001_s` in 3D on M1 Pro: np=1 → 91 min, np=2 → 57 min, np=4 → 34 min, np=8 → 20 min, np=10 → 27 min. These numbers are no longer applicable — `scp_elastic` runs in 2D now (see "Multi-dim compile builds" for the Alamo BC bug that forced the switch). If/when `dim = 3` becomes viable again, completely re-baseline `stop_time` from a fresh validate — the 3D per-step cost is dramatically higher than 2D and the old table would massively overshoot the budget.
+
+If a future agent considers raising `stop_time` "to be more thorough", verify the new total wall time against a fresh `validate.toml` run on the slowest box first.
 
 ## Conventions
 

@@ -101,15 +101,25 @@ extra_core_counts = []
 # If/when the upstream Alamo bug is fixed, switch this back to 3 and re-baseline
 # timings against CLAUDE.md's reference table.
 dim = 2
-# Simulated time per rep.
+# Simulated time per rep — sized so SCP fills the bulk of the 12 h overnight
+# budget on the slowest expected lab box (Xeon E3-1240v6, hostname `rowlf`).
 #
-# The on-disk `tests/SCPSpheresElastic/input` runs to 0.11 s of simulated time.
-# At 2D, a single step is much faster than the 3D reference in CLAUDE.md.
-# Re-baseline with `validate.toml` before adjusting this — the previous 3D
-# reference at `0.0003_s` (~7 h overall SCP wall on M1 Pro) is no longer
-# applicable. As an initial conservative guess, leave this at the 3D value;
-# `validate.toml` will surface the actual 2D timings.
-stop_time = "0.0003_s"
+# Baseline measured during validate at `stop_time = 0.0001_s` on rowlf:
+#   np=1 → 6.4 s, np=2 → 4.5 s, np=4 → 3.1 s, np=8 → 3.7 s  (sweep ≈ 18 s)
+#
+# Linearly scaled to `stop_time = 0.02_s` (200×):
+#   np=1 → 21 min, np=2 → 15 min, np=4 → 10 min, np=8 → 12 min
+#   Sweep ≈ 58 min/rep × 6 (1 warmup + 5 reps_short) ≈ 5.8 h
+#
+# Combined with: compile (~1 h), regression_suite (~3.3 h, extrapolated from
+# M1 Pro 33 min × 2× slowdown), render + noise_floor (~6 min), cooldowns
+# (~25 min) → ~10.8 h total on rowlf. ~1 h margin under the 12 h ceiling.
+#
+# Faster lab boxes finish proportionally sooner. If a future box turns out
+# slower than rowlf, retest with validate and shrink this value. If/when
+# the Alamo BC bug is fixed and `dim` switches back to 3, completely
+# re-baseline (3D per-step cost is dramatically higher than 2D).
+stop_time = "0.02_s"
 
 [benchmarks.render]
 codecs = ["gifski", "av1", "h265"]
