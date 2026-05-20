@@ -1,0 +1,39 @@
+2026-05-20T01:51:48.401Z INFO alamo-benchmark: alamo-benchmark run starting
+2026-05-20T01:51:48.401Z INFO alamo-benchmark:   run_id:     b0b4299c65a9407392706ad930b27807
+2026-05-20T01:51:48.401Z INFO alamo-benchmark:   run_dir:    results/lucy_m4-pro/run_2026-05-20T01-51-48.400641Z
+2026-05-20T01:51:48.401Z INFO alamo-benchmark:   config:     configs/validate.toml
+2026-05-20T01:51:48.401Z INFO alamo-benchmark:   machine_id: lucy_m4-pro  (source: file)
+2026-05-20T01:51:48.401Z INFO alamo-benchmark:   hostname:   MacBookL.local
+2026-05-20T01:51:48.401Z INFO alamo-benchmark:   topology:   Non-Fusion Apple Silicon (Apple M4 Pro): 8 performance cores treated as physical, 4 efficiency cores treated as virtual.
+2026-05-20T01:51:48.427Z INFO alamo-benchmark: Pre-flight: PASS
+2026-05-20T01:51:48.427Z INFO alamo-benchmark:   [OK ] ac_power               plugged in                               (req: AC, advisory)
+2026-05-20T01:51:48.427Z INFO alamo-benchmark:   [OK ] cpu_governor           n/a                                      (req: any, advisory)
+2026-05-20T01:51:48.427Z INFO alamo-benchmark:   [OK ] turbo_boost            n/a (uncontrolled on macOS)              (req: on, advisory)
+2026-05-20T01:51:48.427Z INFO alamo-benchmark:   [OK ] rapl_pl1               n/a (no RAPL on macOS)                   (req: PL1 ~= max, advisory)
+2026-05-20T01:51:48.427Z INFO alamo-benchmark:   [OK ] load_average           1.68                                     (req: <= 4.0, required)
+2026-05-20T01:51:48.427Z INFO alamo-benchmark:   [OK ] disk_free              360.3 GB                                 (req: >= 5.0 GB, required)
+2026-05-20T01:51:48.427Z INFO alamo-benchmark:   [OK ] uptime                 7.1 days                                 (req: <= 365 days, advisory)
+2026-05-20T01:51:48.428Z INFO alamo-benchmark:   [OK ] required_tools         all present                              (req: clang++,mpiexec,make,git, required)
+2026-05-20T01:51:48.428Z INFO alamo-benchmark:   [OK ] sudo_cached            available                                (req: passwordless or pre-cached, advisory)
+2026-05-20T01:51:48.428Z INFO alamo-benchmark:   [OK ] alamo_clean            clean                                    (req: clean, required)
+2026-05-20T01:51:48.526Z INFO benchmarks.telemetry.macos: macOS telemetry started (powermetrics, 1000 ms interval)
+2026-05-20T01:51:48.526Z INFO alamo-benchmark: Starting noise_floor with 3 reps
+2026-05-20T01:51:48.526Z INFO alamo-benchmark:   noise_floor rep=0 config={'matmul_size': 4000} (warmup)
+2026-05-20T01:51:52.507Z INFO alamo-benchmark:   noise_floor rep=2 config={'matmul_size': 4000}
+2026-05-20T01:51:54.756Z INFO alamo-benchmark:   noise_floor rep=1 config={'matmul_size': 4000}
+2026-05-20T01:51:57.002Z INFO alamo-benchmark: Starting compile_serial with 1 reps
+2026-05-20T01:51:57.003Z INFO alamo-benchmark:   compile_serial rep=0 config={'j': 1, 'compiler': 'clang++', 'dims': [2]}
+2026-05-20T01:52:05.951Z INFO alamo-benchmark: Starting compile_parallel with 1 reps
+2026-05-20T01:52:05.952Z INFO alamo-benchmark:   compile_parallel rep=0 config={'j': 8, 'compiler': 'clang++', 'dims': [2]}
+2026-05-20T01:52:09.354Z INFO alamo-benchmark: Starting scp_elastic with 5 reps
+2026-05-20T01:52:09.355Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 12, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:52:11.358Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 2, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:52:13.364Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 8, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:52:15.370Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 1, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:52:17.376Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 4, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:52:19.381Z INFO alamo-benchmark: Starting render_frames with 1 reps
+2026-05-20T01:52:19.382Z INFO alamo-benchmark:   render_frames rep=0 config={'resolution': [640, 360], 'field': 'eta', 'axis': 'z'}
+2026-05-20T01:52:21.384Z INFO alamo-benchmark: Starting render_encode with 1 reps
+2026-05-20T01:52:21.385Z INFO alamo-benchmark:   render_encode rep=0 config={'codec': 'gifski', 'fps': 15}
+2026-05-20T01:52:23.399Z INFO benchmarks.telemetry.macos: macOS telemetry stopped
+2026-05-20T01:52:23.400Z INFO alamo-benchmark: Run complete. DB: results/lucy_m4-pro/run_2026-05-20T01-51-48.400641Z/run_2026-05-20T01-51-48.400641Z.db

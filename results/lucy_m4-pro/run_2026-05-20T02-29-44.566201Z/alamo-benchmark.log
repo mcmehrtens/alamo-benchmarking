@@ -1,0 +1,19 @@
+2026-05-20T02:29:44.566Z INFO alamo-benchmark: alamo-benchmark run starting
+2026-05-20T02:29:44.566Z INFO alamo-benchmark:   run_id:     3a73b8e0f08349769f3bb2647d0c689d
+2026-05-20T02:29:44.567Z INFO alamo-benchmark:   run_dir:    results/lucy_m4-pro/run_2026-05-20T02-29-44.566201Z
+2026-05-20T02:29:44.567Z INFO alamo-benchmark:   config:     configs/default.toml
+2026-05-20T02:29:44.567Z INFO alamo-benchmark:   machine_id: lucy_m4-pro  (source: file)
+2026-05-20T02:29:44.567Z INFO alamo-benchmark:   hostname:   MacBookL.local
+2026-05-20T02:29:44.567Z INFO alamo-benchmark:   topology:   Non-Fusion Apple Silicon (Apple M4 Pro): 8 performance cores treated as physical, 4 efficiency cores treated as virtual.
+2026-05-20T02:29:44.603Z INFO alamo-benchmark: Pre-flight: FAIL
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] ac_power               plugged in                               (req: AC, required)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] cpu_governor           n/a                                      (req: performance, advisory)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] turbo_boost            n/a (uncontrolled on macOS)              (req: on, advisory)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] rapl_pl1               n/a (no RAPL on macOS)                   (req: PL1 ~= max, advisory)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [XX] load_average           1.77                                     (req: <= 1.5, required)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] disk_free              359.7 GB                                 (req: >= 50.0 GB, required)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] uptime                 7.1 days                                 (req: <= 14 days, advisory)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] required_tools         all present                              (req: clang++,mpiexec,make,git, required)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] sudo_cached            available                                (req: passwordless or pre-cached, advisory)
+2026-05-20T02:29:44.603Z INFO alamo-benchmark:   [OK ] alamo_clean            clean                                    (req: clean, required)
+2026-05-20T02:29:44.603Z ERROR alamo-benchmark: Pre-flight failed. Use --force to override (failures still recorded).

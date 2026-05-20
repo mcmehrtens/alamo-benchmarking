@@ -1,0 +1,211 @@
+{
+  "run_id": "07c113376fc54f04bd3eb9f85863d9eb",
+  "started_at": "2026-05-20T02:58:12.849039+00:00",
+  "config_path": "configs/default.toml",
+  "config": {
+    "run": {
+      "mode": "full",
+      "output_dir": "results",
+      "random_seed": 0
+    },
+    "statistics": {
+      "warmup_reps": 1,
+      "reps_short": 5,
+      "reps_long": 2,
+      "reps_noise_floor": 20,
+      "cooldown_seconds": 30
+    },
+    "preflight": {
+      "require_ac": true,
+      "require_governor": "performance",
+      "max_load_1min": 1.5,
+      "min_disk_free_gb": 50,
+      "max_uptime_days": 14
+    },
+    "alamo": {
+      "build_target": "tests/SCPSpheresElastic/input",
+      "compiler": "clang++",
+      "dims": [
+        2,
+        3
+      ]
+    },
+    "telemetry": {
+      "sample_interval_seconds": 1,
+      "require_sudo": true
+    },
+    "benchmarks": {
+      "enabled": [
+        "noise_floor",
+        "compile_serial",
+        "compile_parallel",
+        "regression_suite",
+        "scp_elastic",
+        "render_frames",
+        "render_encode"
+      ],
+      "regression": {
+        "skip_tests": [
+          "FracturePFCZM.2d-serial-notch",
+          "ThermoElastic.2d",
+          "Voronoi.2D-100grain-parallel",
+          "Voronoi.2D-100grain-serial",
+          "VoronoiElastic.2d-serial",
+          "VoronoiElastic.2d-parallel",
+          "VoronoiElastic.2d-serial-restart",
+          "VoronoiElastic.periodic-2d-serial",
+          "VoronoiSimplePeriodic.2d-amr0-mg0-np1",
+          "VoronoiSimplePeriodic.2d-amr2-mg0-np1",
+          "VoronoiSimplePeriodic.2d-amr0-mga-np1",
+          "VoronoiSimplePeriodic.2d-amr2-mga-np1",
+          "VoronoiSimplePeriodic.2d-amr0-mg0-np4",
+          "VoronoiSimplePeriodic.2d-amr2-mg0-np4",
+          "VoronoiSimplePeriodic.2d-amr0-mga-np4",
+          "VoronoiSimplePeriodic.2d-amr2-mga-np4"
+        ]
+      },
+      "scp_elastic": {
+        "extra_core_counts": [],
+        "dim": 2,
+        "stop_time": "0.015_s"
+      },
+      "render": {
+        "codecs": [
+          "gifski",
+          "av1",
+          "h265"
+        ],
+        "frame_resolution": [
+          1920,
+          1080
+        ],
+        "fps": 30
+      }
+    }
+  },
+  "platform": {
+    "hostname": "MacBookL.local",
+    "machine_id": "lucy_m4-pro",
+    "machine_id_source": "file",
+    "os_name": "Darwin",
+    "os_version": "macOS 26.5",
+    "kernel": "25.5.0",
+    "arch": "arm64",
+    "cpu_brand": "Apple M4 Pro",
+    "ram_gb": 48.0,
+    "disk_free_gb": 360.85,
+    "fs_type": "apfs",
+    "on_ac": true,
+    "governor": "n/a",
+    "perf_mode": "unknown",
+    "uptime_seconds": 1052,
+    "tool_versions": {
+      "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+      "clang++": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+      "mpiexec": "mpiexec (Open MPI) 5.0.9",
+      "make": "GNU Make 3.81",
+      "ffmpeg": "ffmpeg version 8.1.1 Copyright (c) 2000-2026 the FFmpeg developers",
+      "gifski": "gifski 1.34.0",
+      "git": "git version 2.50.1 (Apple Git-155)",
+      "uv": "uv 0.11.15 (3cffe97c2 2026-05-18 aarch64-apple-darwin)",
+      "python": "3.14.5 (main, May 10 2026, 19:20:57) [Clang 22.1.3 ]"
+    },
+    "raw_env": {
+      "PATH": "/Users/benchmark/alamo-benchmarking/.venv/bin:/Users/benchmark/.local/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin"
+    }
+  },
+  "topology": {
+    "physical": 8,
+    "virtual": 4,
+    "super_cores": 0,
+    "perf_cores": 8,
+    "eff_cores": 4,
+    "cpu_brand": "Apple M4 Pro",
+    "classification_reason": "Non-Fusion Apple Silicon (Apple M4 Pro): 8 performance cores treated as physical, 4 efficiency cores treated as virtual."
+  },
+  "preflight": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "ac_power",
+        "passed": true,
+        "observed": "plugged in",
+        "required": "AC",
+        "severity": "required"
+      },
+      {
+        "name": "cpu_governor",
+        "passed": true,
+        "observed": "n/a",
+        "required": "performance",
+        "severity": "advisory"
+      },
+      {
+        "name": "turbo_boost",
+        "passed": true,
+        "observed": "n/a (uncontrolled on macOS)",
+        "required": "on",
+        "severity": "advisory"
+      },
+      {
+        "name": "rapl_pl1",
+        "passed": true,
+        "observed": "n/a (no RAPL on macOS)",
+        "required": "PL1 ~= max",
+        "severity": "advisory"
+      },
+      {
+        "name": "load_average",
+        "passed": true,
+        "observed": "1.49",
+        "required": "<= 1.5",
+        "severity": "required"
+      },
+      {
+        "name": "disk_free",
+        "passed": true,
+        "observed": "360.9 GB",
+        "required": ">= 50.0 GB",
+        "severity": "required"
+      },
+      {
+        "name": "uptime",
+        "passed": true,
+        "observed": "0.0 days",
+        "required": "<= 14 days",
+        "severity": "advisory"
+      },
+      {
+        "name": "required_tools",
+        "passed": true,
+        "observed": "all present",
+        "required": "clang++,mpiexec,make,git",
+        "severity": "required"
+      },
+      {
+        "name": "sudo_cached",
+        "passed": true,
+        "observed": "available",
+        "required": "passwordless or pre-cached",
+        "severity": "advisory"
+      },
+      {
+        "name": "alamo_clean",
+        "passed": true,
+        "observed": "clean",
+        "required": "clean",
+        "severity": "required"
+      }
+    ]
+  },
+  "git": {
+    "benchmark_repo": {
+      "sha": "e967b01da72858da44ee3b2037b97e9c088b7e20",
+      "dirty": true
+    },
+    "alamo_repo": {
+      "sha": "1046a3e62431ddc1346bfff9bf2fc64ba7b45401",
+      "dirty": false
+    }
+  }
+}

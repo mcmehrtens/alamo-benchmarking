@@ -1,0 +1,20 @@
+2026-05-19T19:39:18.436Z INFO alamo-benchmark: alamo-benchmark run starting
+2026-05-19T19:39:18.436Z INFO alamo-benchmark:   run_id:     a3ebf0bc77f9489ca6c694b599d355b8
+2026-05-19T19:39:18.436Z INFO alamo-benchmark:   run_dir:    results/rowlf_xeon-e3-1240v6/run_2026-05-19T19-39-18.436132Z
+2026-05-19T19:39:18.436Z INFO alamo-benchmark:   config:     configs/default.toml
+2026-05-19T19:39:18.436Z INFO alamo-benchmark:   machine_id: rowlf_xeon-e3-1240v6  (source: file)
+2026-05-19T19:39:18.436Z INFO alamo-benchmark:   hostname:   rowlf
+2026-05-19T19:39:18.436Z INFO alamo-benchmark:   topology:   Linux x86_64 (Intel(R) Xeon(R) CPU E3-1240 v6 @ 3.70GHz): 1 socket(s) x 4 cores = 4 physical, 2 threads/core = 4 virtual (HT).
+2026-05-19T19:39:18.450Z INFO alamo-benchmark: Pre-flight: FAIL
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] ac_power               no battery (desktop/server)              (req: AC, required)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] macos_perf_mode        n/a                                      (req: n/a, advisory)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] cpu_governor           performance                              (req: performance, required)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] turbo_boost            no_turbo=0                               (req: no_turbo=0, advisory)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] rapl_pl1               intel-rapl:0=PL1 72W/72W                 (req: PL1 >= 80% of max per package, advisory)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [XX] load_average           0.79                                     (req: <= 0.5, required)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] disk_free              285.1 GB                                 (req: >= 50.0 GB, required)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] uptime                 0.0 days                                 (req: <= 14 days, advisory)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] required_tools         all present                              (req: clang++,mpiexec,make,git, required)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] sudo_cached            available                                (req: passwordless or pre-cached, advisory)
+2026-05-19T19:39:18.450Z INFO alamo-benchmark:   [OK ] alamo_clean            clean                                    (req: clean, required)
+2026-05-19T19:39:18.450Z ERROR alamo-benchmark: Pre-flight failed. Use --force to override (failures still recorded).

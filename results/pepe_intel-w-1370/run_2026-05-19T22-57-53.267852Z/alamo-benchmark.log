@@ -1,0 +1,40 @@
+2026-05-19T22:57:53.268Z INFO alamo-benchmark: alamo-benchmark run starting
+2026-05-19T22:57:53.268Z INFO alamo-benchmark:   run_id:     b36ef83dabe14978a13b3f5c5c5f588b
+2026-05-19T22:57:53.268Z INFO alamo-benchmark:   run_dir:    results/pepe_intel-w-1370/run_2026-05-19T22-57-53.267852Z
+2026-05-19T22:57:53.268Z INFO alamo-benchmark:   config:     configs/validate.toml
+2026-05-19T22:57:53.268Z INFO alamo-benchmark:   machine_id: pepe_intel-w-1370  (source: file)
+2026-05-19T22:57:53.268Z INFO alamo-benchmark:   hostname:   pepe
+2026-05-19T22:57:53.268Z INFO alamo-benchmark:   topology:   Linux x86_64 (Intel(R) Xeon(R) W-1370 @ 2.90GHz): 1 socket(s) x 8 cores = 8 physical, 2 threads/core = 8 virtual (HT).
+2026-05-19T22:57:53.276Z INFO alamo-benchmark: Pre-flight: PASS
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] ac_power               no battery (desktop/server)              (req: AC, advisory)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] macos_perf_mode        n/a                                      (req: n/a, advisory)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] cpu_governor           not required                             (req: any, advisory)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] turbo_boost            no_turbo=0                               (req: no_turbo=0, advisory)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] rapl_pl1               intel-rapl:0=PL1 80W/80W                 (req: PL1 >= 80% of max per package, advisory)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] load_average           0.00                                     (req: <= 4.0, required)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] disk_free              147.1 GB                                 (req: >= 5.0 GB, required)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] uptime                 0.0 days                                 (req: <= 365 days, advisory)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] required_tools         all present                              (req: clang++,mpiexec,make,git, required)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] sudo_cached            available                                (req: passwordless or pre-cached, advisory)
+2026-05-19T22:57:53.276Z INFO alamo-benchmark:   [OK ] alamo_clean            clean                                    (req: clean, required)
+2026-05-19T22:57:53.319Z INFO benchmarks.telemetry.linux: Linux telemetry started (turbostat, 1 s interval)
+2026-05-19T22:57:53.319Z INFO alamo-benchmark: Starting noise_floor with 3 reps
+2026-05-19T22:57:53.319Z INFO alamo-benchmark:   noise_floor rep=0 config={'matmul_size': 4000} (warmup)
+2026-05-19T22:57:55.783Z INFO alamo-benchmark:   noise_floor rep=2 config={'matmul_size': 4000}
+2026-05-19T22:57:58.218Z INFO alamo-benchmark:   noise_floor rep=1 config={'matmul_size': 4000}
+2026-05-19T22:58:00.654Z INFO alamo-benchmark: Starting compile_serial with 1 reps
+2026-05-19T22:58:00.654Z INFO alamo-benchmark:   compile_serial rep=0 config={'j': 1, 'compiler': 'clang++', 'dims': [2]}
+2026-05-19T23:06:42.363Z INFO alamo-benchmark: Starting compile_parallel with 1 reps
+2026-05-19T23:06:42.363Z INFO alamo-benchmark:   compile_parallel rep=0 config={'j': 8, 'compiler': 'clang++', 'dims': [2]}
+2026-05-19T23:08:16.829Z INFO alamo-benchmark: Starting scp_elastic with 5 reps
+2026-05-19T23:08:16.829Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 4, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-19T23:09:26.628Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 16, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-19T23:10:38.790Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 2, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-19T23:12:09.870Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 1, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-19T23:14:25.441Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 8, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-19T23:15:14.935Z INFO alamo-benchmark: Starting render_frames with 1 reps
+2026-05-19T23:15:14.935Z INFO alamo-benchmark:   render_frames rep=0 config={'resolution': [640, 360], 'field': 'eta', 'axis': 'z'}
+2026-05-19T23:15:24.063Z INFO alamo-benchmark: Starting render_encode with 1 reps
+2026-05-19T23:15:24.063Z INFO alamo-benchmark:   render_encode rep=0 config={'codec': 'gifski', 'fps': 15}
+2026-05-19T23:15:26.333Z INFO benchmarks.telemetry.linux: Linux telemetry stopped
+2026-05-19T23:15:26.344Z INFO alamo-benchmark: Run complete. DB: results/pepe_intel-w-1370/run_2026-05-19T22-57-53.267852Z/run_2026-05-19T22-57-53.267852Z.db

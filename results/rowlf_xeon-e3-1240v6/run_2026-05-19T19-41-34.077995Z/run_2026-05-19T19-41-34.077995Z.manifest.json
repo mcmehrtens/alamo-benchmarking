@@ -1,0 +1,219 @@
+{
+  "run_id": "e599afc335714ceabdf2d892ee99f92d",
+  "started_at": "2026-05-19T19:41:34.077995+00:00",
+  "config_path": "configs/default.toml",
+  "config": {
+    "run": {
+      "mode": "full",
+      "output_dir": "results",
+      "random_seed": 0
+    },
+    "statistics": {
+      "warmup_reps": 1,
+      "reps_short": 5,
+      "reps_long": 2,
+      "reps_noise_floor": 20,
+      "cooldown_seconds": 30
+    },
+    "preflight": {
+      "require_ac": true,
+      "require_governor": "performance",
+      "require_macos_perf_mode": true,
+      "max_load_1min": 1.5,
+      "min_disk_free_gb": 50,
+      "max_uptime_days": 14
+    },
+    "alamo": {
+      "build_target": "tests/SCPSpheresElastic/input",
+      "compiler": "clang++",
+      "dims": [
+        2,
+        3
+      ]
+    },
+    "telemetry": {
+      "sample_interval_seconds": 1,
+      "require_sudo": true
+    },
+    "benchmarks": {
+      "enabled": [
+        "noise_floor",
+        "compile_serial",
+        "compile_parallel",
+        "regression_suite",
+        "scp_elastic",
+        "render_frames",
+        "render_encode"
+      ],
+      "regression": {
+        "skip_tests": [
+          "FracturePFCZM.2d-serial-notch",
+          "ThermoElastic.2d",
+          "Voronoi.2D-100grain-parallel",
+          "Voronoi.2D-100grain-serial",
+          "VoronoiElastic.2d-serial",
+          "VoronoiElastic.2d-parallel",
+          "VoronoiElastic.2d-serial-restart",
+          "VoronoiElastic.periodic-2d-serial",
+          "VoronoiSimplePeriodic.2d-amr0-mg0-np1",
+          "VoronoiSimplePeriodic.2d-amr2-mg0-np1",
+          "VoronoiSimplePeriodic.2d-amr0-mga-np1",
+          "VoronoiSimplePeriodic.2d-amr2-mga-np1",
+          "VoronoiSimplePeriodic.2d-amr0-mg0-np4",
+          "VoronoiSimplePeriodic.2d-amr2-mg0-np4",
+          "VoronoiSimplePeriodic.2d-amr0-mga-np4",
+          "VoronoiSimplePeriodic.2d-amr2-mga-np4"
+        ]
+      },
+      "scp_elastic": {
+        "extra_core_counts": [],
+        "dim": 2,
+        "stop_time": "0.015_s"
+      },
+      "render": {
+        "codecs": [
+          "gifski",
+          "av1",
+          "h265"
+        ],
+        "frame_resolution": [
+          1920,
+          1080
+        ],
+        "fps": 30
+      }
+    }
+  },
+  "platform": {
+    "hostname": "rowlf",
+    "machine_id": "rowlf_xeon-e3-1240v6",
+    "machine_id_source": "file",
+    "os_name": "Linux",
+    "os_version": "#29~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Mon May 11 10:30:58 UTC 2",
+    "kernel": "6.17.0-29-generic",
+    "arch": "x86_64",
+    "cpu_brand": "Intel(R) Xeon(R) CPU E3-1240 v6 @ 3.70GHz",
+    "ram_gb": 31.28,
+    "disk_free_gb": 285.06,
+    "fs_type": "ext4",
+    "on_ac": true,
+    "governor": "performance",
+    "perf_mode": "n/a",
+    "uptime_seconds": 264,
+    "tool_versions": {
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "clang++": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "mpiexec": "mpiexec (OpenRTE) 4.1.6",
+      "make": "GNU Make 4.3",
+      "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "gifski": "gifski 1.34.0",
+      "git": "git version 2.43.0",
+      "uv": "uv 0.11.15 (x86_64-unknown-linux-gnu)",
+      "python": "3.14.5 (main, May 10 2026, 19:28:16) [Clang 22.1.3 ]"
+    },
+    "raw_env": {
+      "PATH": "/home/benchmark/alamo-benchmarking/.venv/bin:/home/benchmark/.local/bin:/home/benchmark/.local/bin:/home/benchmark/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+    }
+  },
+  "topology": {
+    "physical": 4,
+    "virtual": 4,
+    "super_cores": 0,
+    "perf_cores": 4,
+    "eff_cores": 0,
+    "cpu_brand": "Intel(R) Xeon(R) CPU E3-1240 v6 @ 3.70GHz",
+    "classification_reason": "Linux x86_64 (Intel(R) Xeon(R) CPU E3-1240 v6 @ 3.70GHz): 1 socket(s) x 4 cores = 4 physical, 2 threads/core = 4 virtual (HT)."
+  },
+  "preflight": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "ac_power",
+        "passed": true,
+        "observed": "no battery (desktop/server)",
+        "required": "AC",
+        "severity": "required"
+      },
+      {
+        "name": "macos_perf_mode",
+        "passed": true,
+        "observed": "n/a",
+        "required": "n/a",
+        "severity": "advisory"
+      },
+      {
+        "name": "cpu_governor",
+        "passed": true,
+        "observed": "performance",
+        "required": "performance",
+        "severity": "required"
+      },
+      {
+        "name": "turbo_boost",
+        "passed": true,
+        "observed": "no_turbo=0",
+        "required": "no_turbo=0",
+        "severity": "advisory"
+      },
+      {
+        "name": "rapl_pl1",
+        "passed": true,
+        "observed": "intel-rapl:0=PL1 72W/72W",
+        "required": "PL1 >= 80% of max per package",
+        "severity": "advisory"
+      },
+      {
+        "name": "load_average",
+        "passed": true,
+        "observed": "0.09",
+        "required": "<= 1.5",
+        "severity": "required"
+      },
+      {
+        "name": "disk_free",
+        "passed": true,
+        "observed": "285.1 GB",
+        "required": ">= 50.0 GB",
+        "severity": "required"
+      },
+      {
+        "name": "uptime",
+        "passed": true,
+        "observed": "0.0 days",
+        "required": "<= 14 days",
+        "severity": "advisory"
+      },
+      {
+        "name": "required_tools",
+        "passed": true,
+        "observed": "all present",
+        "required": "clang++,mpiexec,make,git",
+        "severity": "required"
+      },
+      {
+        "name": "sudo_cached",
+        "passed": true,
+        "observed": "available",
+        "required": "passwordless or pre-cached",
+        "severity": "advisory"
+      },
+      {
+        "name": "alamo_clean",
+        "passed": true,
+        "observed": "clean",
+        "required": "clean",
+        "severity": "required"
+      }
+    ]
+  },
+  "git": {
+    "benchmark_repo": {
+      "sha": "da6be72016c67219ac691323095c5eb973b173e5",
+      "dirty": true
+    },
+    "alamo_repo": {
+      "sha": "1046a3e62431ddc1346bfff9bf2fc64ba7b45401",
+      "dirty": false
+    }
+  }
+}

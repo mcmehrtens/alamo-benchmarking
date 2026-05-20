@@ -1,0 +1,114 @@
+2026-05-20T02:58:12.849Z INFO alamo-benchmark: alamo-benchmark run starting
+2026-05-20T02:58:12.849Z INFO alamo-benchmark:   run_id:     07c113376fc54f04bd3eb9f85863d9eb
+2026-05-20T02:58:12.849Z INFO alamo-benchmark:   run_dir:    results/lucy_m4-pro/run_2026-05-20T02-58-12.849039Z
+2026-05-20T02:58:12.849Z INFO alamo-benchmark:   config:     configs/default.toml
+2026-05-20T02:58:12.849Z INFO alamo-benchmark:   machine_id: lucy_m4-pro  (source: file)
+2026-05-20T02:58:12.849Z INFO alamo-benchmark:   hostname:   MacBookL.local
+2026-05-20T02:58:12.849Z INFO alamo-benchmark:   topology:   Non-Fusion Apple Silicon (Apple M4 Pro): 8 performance cores treated as physical, 4 efficiency cores treated as virtual.
+2026-05-20T02:58:12.870Z INFO alamo-benchmark: Pre-flight: PASS
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] ac_power               plugged in                               (req: AC, required)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] cpu_governor           n/a                                      (req: performance, advisory)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] turbo_boost            n/a (uncontrolled on macOS)              (req: on, advisory)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] rapl_pl1               n/a (no RAPL on macOS)                   (req: PL1 ~= max, advisory)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] load_average           1.49                                     (req: <= 1.5, required)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] disk_free              360.9 GB                                 (req: >= 50.0 GB, required)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] uptime                 0.0 days                                 (req: <= 14 days, advisory)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] required_tools         all present                              (req: clang++,mpiexec,make,git, required)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] sudo_cached            available                                (req: passwordless or pre-cached, advisory)
+2026-05-20T02:58:12.871Z INFO alamo-benchmark:   [OK ] alamo_clean            clean                                    (req: clean, required)
+2026-05-20T02:58:12.917Z INFO benchmarks.telemetry.macos: macOS telemetry started (powermetrics, 1000 ms interval)
+2026-05-20T02:58:12.918Z INFO alamo-benchmark: Starting noise_floor with 20 reps
+2026-05-20T02:58:12.918Z INFO alamo-benchmark:   noise_floor rep=0 config={'matmul_size': 4000} (warmup)
+2026-05-20T02:58:43.190Z INFO alamo-benchmark:   noise_floor rep=4 config={'matmul_size': 4000}
+2026-05-20T02:59:13.444Z INFO alamo-benchmark:   noise_floor rep=6 config={'matmul_size': 4000}
+2026-05-20T02:59:43.698Z INFO alamo-benchmark:   noise_floor rep=5 config={'matmul_size': 4000}
+2026-05-20T03:00:13.949Z INFO alamo-benchmark:   noise_floor rep=13 config={'matmul_size': 4000}
+2026-05-20T03:00:44.200Z INFO alamo-benchmark:   noise_floor rep=14 config={'matmul_size': 4000}
+2026-05-20T03:01:14.457Z INFO alamo-benchmark:   noise_floor rep=18 config={'matmul_size': 4000}
+2026-05-20T03:01:44.705Z INFO alamo-benchmark:   noise_floor rep=15 config={'matmul_size': 4000}
+2026-05-20T03:02:14.957Z INFO alamo-benchmark:   noise_floor rep=8 config={'matmul_size': 4000}
+2026-05-20T03:02:45.214Z INFO alamo-benchmark:   noise_floor rep=2 config={'matmul_size': 4000}
+2026-05-20T03:03:15.463Z INFO alamo-benchmark:   noise_floor rep=19 config={'matmul_size': 4000}
+2026-05-20T03:03:45.719Z INFO alamo-benchmark:   noise_floor rep=1 config={'matmul_size': 4000}
+2026-05-20T03:04:15.975Z INFO alamo-benchmark:   noise_floor rep=11 config={'matmul_size': 4000}
+2026-05-20T03:04:46.245Z INFO alamo-benchmark:   noise_floor rep=7 config={'matmul_size': 4000}
+2026-05-20T03:05:16.516Z INFO alamo-benchmark:   noise_floor rep=16 config={'matmul_size': 4000}
+2026-05-20T03:05:46.773Z INFO alamo-benchmark:   noise_floor rep=3 config={'matmul_size': 4000}
+2026-05-20T03:06:17.041Z INFO alamo-benchmark:   noise_floor rep=10 config={'matmul_size': 4000}
+2026-05-20T03:06:47.302Z INFO alamo-benchmark:   noise_floor rep=12 config={'matmul_size': 4000}
+2026-05-20T03:07:17.554Z INFO alamo-benchmark:   noise_floor rep=9 config={'matmul_size': 4000}
+2026-05-20T03:07:47.823Z INFO alamo-benchmark:   noise_floor rep=17 config={'matmul_size': 4000}
+2026-05-20T03:08:18.085Z INFO alamo-benchmark: Starting compile_serial with 3 reps
+2026-05-20T03:08:18.086Z INFO alamo-benchmark:   compile_serial rep=0 config={'j': 1, 'compiler': 'clang++', 'dims': [2, 3]} (warmup)
+2026-05-20T03:15:07.501Z INFO alamo-benchmark:   compile_serial rep=1 config={'j': 1, 'compiler': 'clang++', 'dims': [2, 3]}
+2026-05-20T03:20:23.663Z INFO alamo-benchmark:   compile_serial rep=2 config={'j': 1, 'compiler': 'clang++', 'dims': [2, 3]}
+2026-05-20T03:25:40.930Z INFO alamo-benchmark: Starting compile_parallel with 3 reps
+2026-05-20T03:25:40.931Z INFO alamo-benchmark:   compile_parallel rep=0 config={'j': 8, 'compiler': 'clang++', 'dims': [2, 3]} (warmup)
+2026-05-20T03:27:29.451Z INFO alamo-benchmark:   compile_parallel rep=2 config={'j': 8, 'compiler': 'clang++', 'dims': [2, 3]}
+2026-05-20T03:29:17.992Z INFO alamo-benchmark:   compile_parallel rep=1 config={'j': 8, 'compiler': 'clang++', 'dims': [2, 3]}
+2026-05-20T03:31:06.547Z INFO alamo-benchmark: Starting regression_suite with 3 reps
+2026-05-20T03:31:06.547Z INFO alamo-benchmark:   regression_suite rep=0 config={'compiler': 'clang++'} (warmup)
+2026-05-20T03:31:06.555Z INFO benchmarks.runners.regression: regression: skipped 16 test sections
+2026-05-20T03:50:42.529Z INFO alamo-benchmark:   regression_suite rep=2 config={'compiler': 'clang++'}
+2026-05-20T03:50:42.532Z INFO benchmarks.runners.regression: regression: skipped 16 test sections
+2026-05-20T04:10:05.727Z INFO alamo-benchmark:   regression_suite rep=1 config={'compiler': 'clang++'}
+2026-05-20T04:10:05.730Z INFO benchmarks.runners.regression: regression: skipped 16 test sections
+2026-05-20T04:29:27.466Z INFO alamo-benchmark: Starting scp_elastic with 30 reps
+2026-05-20T04:29:27.466Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 8, 'stop_time': '0.015_s', 'dim': 2} (warmup)
+2026-05-20T04:32:12.762Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 12, 'stop_time': '0.015_s', 'dim': 2} (warmup)
+2026-05-20T04:37:14.348Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 4, 'stop_time': '0.015_s', 'dim': 2} (warmup)
+2026-05-20T04:40:33.005Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 2, 'stop_time': '0.015_s', 'dim': 2} (warmup)
+2026-05-20T04:45:26.416Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 1, 'stop_time': '0.015_s', 'dim': 2} (warmup)
+2026-05-20T04:52:57.436Z INFO alamo-benchmark:   scp_elastic rep=2 config={'np': 12, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T04:58:00.469Z INFO alamo-benchmark:   scp_elastic rep=1 config={'np': 8, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:00:40.568Z INFO alamo-benchmark:   scp_elastic rep=4 config={'np': 2, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:05:33.924Z INFO alamo-benchmark:   scp_elastic rep=1 config={'np': 2, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:10:24.377Z INFO alamo-benchmark:   scp_elastic rep=4 config={'np': 8, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:13:08.086Z INFO alamo-benchmark:   scp_elastic rep=5 config={'np': 1, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:20:41.371Z INFO alamo-benchmark:   scp_elastic rep=5 config={'np': 12, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:25:44.443Z INFO alamo-benchmark:   scp_elastic rep=3 config={'np': 8, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:28:22.683Z INFO alamo-benchmark:   scp_elastic rep=1 config={'np': 12, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:33:26.030Z INFO alamo-benchmark:   scp_elastic rep=2 config={'np': 1, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:40:56.288Z INFO alamo-benchmark:   scp_elastic rep=3 config={'np': 1, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:48:32.268Z INFO alamo-benchmark:   scp_elastic rep=3 config={'np': 4, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:51:51.379Z INFO alamo-benchmark:   scp_elastic rep=3 config={'np': 12, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T05:56:54.777Z INFO alamo-benchmark:   scp_elastic rep=2 config={'np': 4, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:00:12.909Z INFO alamo-benchmark:   scp_elastic rep=1 config={'np': 4, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:03:31.381Z INFO alamo-benchmark:   scp_elastic rep=1 config={'np': 1, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:11:02.815Z INFO alamo-benchmark:   scp_elastic rep=4 config={'np': 12, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:16:05.609Z INFO alamo-benchmark:   scp_elastic rep=5 config={'np': 2, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:20:59.591Z INFO alamo-benchmark:   scp_elastic rep=2 config={'np': 2, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:25:52.234Z INFO alamo-benchmark:   scp_elastic rep=5 config={'np': 4, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:29:09.857Z INFO alamo-benchmark:   scp_elastic rep=3 config={'np': 2, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:34:00.776Z INFO alamo-benchmark:   scp_elastic rep=5 config={'np': 8, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:36:42.587Z INFO alamo-benchmark:   scp_elastic rep=4 config={'np': 1, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:44:15.180Z INFO alamo-benchmark:   scp_elastic rep=4 config={'np': 4, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:47:34.889Z INFO alamo-benchmark:   scp_elastic rep=2 config={'np': 8, 'stop_time': '0.015_s', 'dim': 2}
+2026-05-20T06:50:19.516Z INFO alamo-benchmark: Starting render_frames with 6 reps
+2026-05-20T06:50:19.517Z INFO alamo-benchmark:   render_frames rep=0 config={'resolution': [1920, 1080], 'field': 'eta', 'axis': 'z'} (warmup)
+2026-05-20T06:51:13.953Z INFO alamo-benchmark:   render_frames rep=4 config={'resolution': [1920, 1080], 'field': 'eta', 'axis': 'z'}
+2026-05-20T06:52:08.063Z INFO alamo-benchmark:   render_frames rep=2 config={'resolution': [1920, 1080], 'field': 'eta', 'axis': 'z'}
+2026-05-20T06:53:02.215Z INFO alamo-benchmark:   render_frames rep=1 config={'resolution': [1920, 1080], 'field': 'eta', 'axis': 'z'}
+2026-05-20T06:53:56.404Z INFO alamo-benchmark:   render_frames rep=3 config={'resolution': [1920, 1080], 'field': 'eta', 'axis': 'z'}
+2026-05-20T06:54:50.560Z INFO alamo-benchmark:   render_frames rep=5 config={'resolution': [1920, 1080], 'field': 'eta', 'axis': 'z'}
+2026-05-20T06:55:44.616Z INFO alamo-benchmark: Starting render_encode with 18 reps
+2026-05-20T06:55:44.616Z INFO alamo-benchmark:   render_encode rep=0 config={'codec': 'h265', 'fps': 30} (warmup)
+2026-05-20T06:56:15.211Z INFO alamo-benchmark:   render_encode rep=0 config={'codec': 'av1', 'fps': 30} (warmup)
+2026-05-20T06:56:54.819Z INFO alamo-benchmark:   render_encode rep=0 config={'codec': 'gifski', 'fps': 30} (warmup)
+2026-05-20T06:57:25.346Z INFO alamo-benchmark:   render_encode rep=4 config={'codec': 'h265', 'fps': 30}
+2026-05-20T06:57:55.919Z INFO alamo-benchmark:   render_encode rep=1 config={'codec': 'h265', 'fps': 30}
+2026-05-20T06:58:26.490Z INFO alamo-benchmark:   render_encode rep=1 config={'codec': 'gifski', 'fps': 30}
+2026-05-20T06:58:57.025Z INFO alamo-benchmark:   render_encode rep=4 config={'codec': 'gifski', 'fps': 30}
+2026-05-20T06:59:27.556Z INFO alamo-benchmark:   render_encode rep=3 config={'codec': 'av1', 'fps': 30}
+2026-05-20T07:00:07.027Z INFO alamo-benchmark:   render_encode rep=3 config={'codec': 'h265', 'fps': 30}
+2026-05-20T07:00:37.592Z INFO alamo-benchmark:   render_encode rep=2 config={'codec': 'gifski', 'fps': 30}
+2026-05-20T07:01:08.115Z INFO alamo-benchmark:   render_encode rep=2 config={'codec': 'av1', 'fps': 30}
+2026-05-20T07:01:47.614Z INFO alamo-benchmark:   render_encode rep=1 config={'codec': 'av1', 'fps': 30}
+2026-05-20T07:02:27.160Z INFO alamo-benchmark:   render_encode rep=2 config={'codec': 'h265', 'fps': 30}
+2026-05-20T07:02:57.725Z INFO alamo-benchmark:   render_encode rep=3 config={'codec': 'gifski', 'fps': 30}
+2026-05-20T07:03:28.263Z INFO alamo-benchmark:   render_encode rep=5 config={'codec': 'gifski', 'fps': 30}
+2026-05-20T07:03:58.788Z INFO alamo-benchmark:   render_encode rep=5 config={'codec': 'av1', 'fps': 30}
+2026-05-20T07:04:38.290Z INFO alamo-benchmark:   render_encode rep=4 config={'codec': 'av1', 'fps': 30}
+2026-05-20T07:05:17.806Z INFO alamo-benchmark:   render_encode rep=5 config={'codec': 'h265', 'fps': 30}
+2026-05-20T07:05:48.390Z INFO benchmarks.telemetry.macos: macOS telemetry stopped
+2026-05-20T07:05:48.393Z INFO alamo-benchmark: Run complete. DB: results/lucy_m4-pro/run_2026-05-20T02-58-12.849039Z/run_2026-05-20T02-58-12.849039Z.db
