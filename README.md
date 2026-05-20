@@ -61,7 +61,7 @@ The script refuses to start unless the machine is in benchmark-ready state. Conf
 | Setting           | macOS                                                 | Linux                                            |
 | ----------------- | ----------------------------------------------------- | ------------------------------------------------ |
 | AC power          | Plugged in                                            | Plugged in                                       |
-| Performance mode  | High Power Mode on (System Settings → Battery)        | `sudo cpupower frequency-set -g performance`     |
+| Performance mode  | High Power Mode on (System Settings → Battery) — recommended but not enforced (operator-verified; `pmset -g` reporting is unreliable on M4/M5 Pro) | `sudo cpupower frequency-set -g performance` (enforced) |
 | Low-power mode    | Off                                                   | n/a                                              |
 | Turbo boost       | Left on (recorded, not controlled)                    | `/sys/devices/system/cpu/intel_pstate/no_turbo=0`|
 | Background apps   | Closed; load avg below threshold                      | Same                                             |

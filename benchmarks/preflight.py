@@ -59,7 +59,6 @@ def run_preflight(
     system = platform.system()
 
     add(_check_ac(cfg))
-    add(_check_perf_mode(cfg, system))
     add(_check_governor(cfg, system))
     add(_check_turbo(system))
     add(_check_rapl(system))
@@ -88,36 +87,6 @@ def _check_ac(cfg: PreflightConfig) -> CheckResult:
     if bool(bat.power_plugged):  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
         return CheckResult("ac_power", True, "plugged in", "AC", severity)
     return CheckResult("ac_power", not cfg.require_ac, "on battery", "AC", severity)
-
-
-def _check_perf_mode(cfg: PreflightConfig, system: str) -> CheckResult:
-    if system != "Darwin":
-        return CheckResult("macos_perf_mode", True, "n/a", "n/a", "advisory")
-    severity = "required" if cfg.require_macos_perf_mode else "advisory"
-    try:
-        out = subprocess.run(["pmset", "-g"], check=True, capture_output=True, text=True).stdout
-    except subprocess.CalledProcessError, FileNotFoundError:
-        return CheckResult(
-            "macos_perf_mode",
-            not cfg.require_macos_perf_mode,
-            "pmset failed",
-            "highpowermode=1",
-            severity,
-        )
-
-    high = "highpowermode" in out and _pmset_value(out, "highpowermode") == "1"
-    low = "lowpowermode" in out and _pmset_value(out, "lowpowermode") == "1"
-    observed = f"high={'1' if high else '0'} low={'1' if low else '0'}"
-    ok = (high or not cfg.require_macos_perf_mode) and not low
-    return CheckResult("macos_perf_mode", ok, observed, "high=1, low=0", severity)
-
-
-def _pmset_value(text: str, key: str) -> str:
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith(key):
-            return stripped.split()[-1]
-    return ""
 
 
 def _check_governor(cfg: PreflightConfig, system: str) -> CheckResult:

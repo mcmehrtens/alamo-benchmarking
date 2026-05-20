@@ -22,7 +22,6 @@ class StatisticsConfig:
 class PreflightConfig:
     require_ac: bool
     require_governor: str
-    require_macos_perf_mode: bool
     max_load_1min: float
     min_disk_free_gb: float
     max_uptime_days: int
@@ -100,7 +99,6 @@ def load_config(path: Path) -> Config:
         preflight=PreflightConfig(
             require_ac=bool(pre["require_ac"]),
             require_governor=str(pre["require_governor"]),
-            require_macos_perf_mode=bool(pre["require_macos_perf_mode"]),
             max_load_1min=float(pre["max_load_1min"]),
             min_disk_free_gb=float(pre["min_disk_free_gb"]),
             max_uptime_days=int(pre["max_uptime_days"]),
