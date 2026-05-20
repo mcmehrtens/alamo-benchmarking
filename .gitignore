@@ -36,3 +36,6 @@ alamo/tmp_build_dir/
 alamo/Bin/
 alamo/build/
 alamo/*.log
+
+# Generated post-processing report (run `uv run alamo-benchmark report` to rebuild).
+/report/

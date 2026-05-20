@@ -1,0 +1,23 @@
+2026-05-20T02:29:12.886Z INFO alamo-benchmark: alamo-benchmark run starting
+2026-05-20T02:29:12.886Z INFO alamo-benchmark:   run_id:     f8880c7687a442bf86fbf20f14016166
+2026-05-20T02:29:12.886Z INFO alamo-benchmark:   run_dir:    results/jenna_m5-pro/run_2026-05-20T02-29-12.886281Z
+2026-05-20T02:29:12.886Z INFO alamo-benchmark:   config:     configs/default.toml
+2026-05-20T02:29:12.886Z INFO alamo-benchmark:   machine_id: jenna_m5-pro  (source: file)
+2026-05-20T02:29:12.886Z INFO alamo-benchmark:   hostname:   Mac
+2026-05-20T02:29:12.886Z INFO alamo-benchmark:   topology:   Fusion Architecture chip (Apple M5 Pro): 6 super cores treated as physical, 12 performance cores treated as virtual (secondary core class).
+2026-05-20T02:29:12.910Z INFO alamo-benchmark: Pre-flight: PASS
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] ac_power               plugged in                               (req: AC, required)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] cpu_governor           n/a                                      (req: performance, advisory)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] turbo_boost            n/a (uncontrolled on macOS)              (req: on, advisory)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] rapl_pl1               n/a (no RAPL on macOS)                   (req: PL1 ~= max, advisory)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] load_average           1.17                                     (req: <= 1.5, required)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] disk_free              814.2 GB                                 (req: >= 50.0 GB, required)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] uptime                 0.0 days                                 (req: <= 14 days, advisory)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] required_tools         all present                              (req: clang++,mpiexec,make,git, required)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] sudo_cached            available                                (req: passwordless or pre-cached, advisory)
+2026-05-20T02:29:12.910Z INFO alamo-benchmark:   [OK ] alamo_clean            clean                                    (req: clean, required)
+2026-05-20T02:29:12.955Z INFO benchmarks.telemetry.macos: macOS telemetry started (powermetrics, 1000 ms interval)
+2026-05-20T02:29:12.955Z INFO alamo-benchmark: Starting noise_floor with 20 reps
+2026-05-20T02:29:12.955Z INFO alamo-benchmark:   noise_floor rep=0 config={'matmul_size': 4000} (warmup)
+2026-05-20T02:29:43.325Z INFO alamo-benchmark:   noise_floor rep=3 config={'matmul_size': 4000}
+2026-05-20T02:29:46.670Z INFO benchmarks.telemetry.macos: macOS telemetry stopped

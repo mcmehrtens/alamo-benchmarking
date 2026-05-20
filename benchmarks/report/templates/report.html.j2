@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>alamo-benchmarking — fleet report</title>
+<style>
+  :root {
+    --fg: #1a1a1a;
+    --muted: #555;
+    --bg: #ffffff;
+    --border: #d0d0d0;
+    --row-alt: #f7f7f7;
+    --warn: #b35900;
+    --bad: #b3001b;
+    --ok: #2a7a2a;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    margin: 0;
+    padding: 1.5rem 2rem 4rem;
+    line-height: 1.45;
+    max-width: 1280px;
+  }
+  h1 { font-size: 1.8rem; margin: 0 0 0.4rem 0; }
+  h2 { margin-top: 2.4rem; font-size: 1.4rem; border-bottom: 2px solid var(--border); padding-bottom: 0.2rem; }
+  h3 { margin-top: 1.6rem; font-size: 1.05rem; color: var(--muted); }
+  p, ul { color: var(--fg); }
+  .lede { color: var(--muted); font-size: 0.95rem; }
+  table {
+    border-collapse: collapse;
+    margin: 0.6rem 0 1rem 0;
+    font-size: 0.85rem;
+    width: 100%;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.55rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #efefef; }
+  tr:nth-child(even) td { background: var(--row-alt); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.mono, th.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem; }
+  figure { margin: 0 0 1.4rem 0; }
+  figure img { max-width: 100%; height: auto; display: block; }
+  figcaption { color: var(--muted); font-size: 0.85rem; padding: 0.2rem 0 0 0; }
+  .section-desc { color: var(--muted); margin: 0.2rem 0 0.6rem 0; }
+  .footnote { color: var(--muted); font-size: 0.82rem; border-top: 1px dashed var(--border); padding-top: 0.4rem; margin-top: 0.5rem; }
+  .pill { display: inline-block; padding: 0.05rem 0.4rem; border-radius: 0.6rem; background: #e8e8e8; color: #333; font-size: 0.75rem; }
+  .pill.warn { background: #fde8d3; color: var(--warn); }
+  .pill.bad { background: #fde0e3; color: var(--bad); }
+  .pill.ok { background: #def0de; color: var(--ok); }
+  .machine-block { margin: 1.2rem 0; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; background: #fafafa; }
+  .machine-block h3 { margin-top: 0; }
+  details { margin: 0.6rem 0; border: 1px solid var(--border); border-radius: 4px; padding: 0.3rem 0.6rem; background: #fbfbfb; }
+  details > summary { cursor: pointer; color: var(--muted); padding: 0.15rem 0; user-select: none; }
+  details[open] > summary { color: var(--fg); font-weight: 500; border-bottom: 1px dashed var(--border); margin-bottom: 0.4rem; }
+  code { background: #f0f0f0; padding: 0 0.2rem; border-radius: 3px; }
+  nav.toc { font-size: 0.9rem; }
+  nav.toc ol { padding-left: 1.2rem; }
+  .tabbar { display: flex; gap: 0.3rem; flex-wrap: wrap; margin: 0.4rem 0 0.6rem 0; }
+  .tabbar button {
+    font: inherit;
+    color: var(--muted);
+    background: #f0f0f0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.65rem;
+    cursor: pointer;
+  }
+  .tabbar button.active {
+    color: var(--fg);
+    background: #fff;
+    border-color: #777;
+    box-shadow: 0 1px 0 #777 inset;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+</head>
+<body>
+
+<h1>alamo-benchmarking — fleet report</h1>
+<p class="lede">Generated {{ generated_at }} · {{ machine_ids|length }} machine(s): {{ machine_ids|join(", ") }}</p>
+
+<p class="lede">
+  Machines are ordered <strong>slowest &rarr; fastest</strong> (left to right in
+  combined plots, top to bottom in per-machine sections) by their best
+  measured SCP elastic wall time, so every figure tells the same story in the
+  same direction. Raw per-machine tables are folded into expandable
+  drop-downs.
+</p>
+
+<nav class="toc">
+<ol>
+  <li><a href="#inventory">Run inventory</a></li>
+  <li><a href="#tool-versions">Tool versions per machine</a></li>
+  <li><a href="#preflight">Pre-flight outcomes</a></li>
+  <li><a href="#noise-floor">Noise floor</a></li>
+  <li><a href="#compile">Compile benchmarks</a></li>
+  <li><a href="#regression">Regression suite</a></li>
+  <li><a href="#scp-optimal">SCP elastic — best per-machine wall time</a></li>
+  <li><a href="#geekbench">SCP elastic vs Geekbench prediction</a></li>
+  <li><a href="#scp">SCP elastic — strong scaling sweep</a></li>
+  <li><a href="#scp-determinism">SCP output-hash determinism</a></li>
+  <li><a href="#render-frames">Render frames</a></li>
+  <li><a href="#render-encode">Render encode by codec</a></li>
+  <li><a href="#power-util">Combined telemetry: power and utilization</a></li>
+  <li><a href="#telemetry">Telemetry overview</a></li>
+  <li><a href="#telemetry-zoom">Telemetry zoom: SCP optimal-np rep</a></li>
+  <li><a href="#telemetry-summary">Telemetry summary per benchmark</a></li>
+  <li><a href="#appendix">Appendix — raw data locations</a></li>
+</ol>
+</nav>
+
+<h2 id="inventory">1. Run inventory</h2>
+<p class="section-desc">
+  One row per machine. <code>machine_id</code> is the lab-stable identifier
+  declared by the operator (SETUP.md §4b); <code>hostname</code> is the OS
+  hostname captured at run time. Wall duration is the end-to-end run length —
+  <code>started_at</code> to <code>ended_at</code>, including all cooldowns.
+  Repo SHAs marked with a <span class="pill warn">dirty</span> pill had
+  uncommitted changes when the run started.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>machine_id</th>
+      <th>hostname</th>
+      <th>OS</th>
+      <th>CPU</th>
+      <th class="num">phys / virt</th>
+      <th class="num">RAM (GB)</th>
+      <th>started (UTC)</th>
+      <th class="num">duration</th>
+      <th>benchmark SHA</th>
+      <th>alamo SHA</th>
+      <th>config mode</th>
+      <th class="num">schema</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in inventory %}
+    <tr>
+      <td class="mono">{{ r.machine_id }}</td>
+      <td class="mono">{{ r.hostname }}</td>
+      <td>{{ r.os }}</td>
+      <td>{{ r.cpu }}</td>
+      <td class="num">{{ r.cores_physical }} / {{ r.cores_virtual }}</td>
+      <td class="num">{{ "%.1f"|format(r.ram_gb) }}</td>
+      <td class="mono">{{ r.started_at|fmt_dt }}</td>
+      <td class="num">{{ r.duration_seconds|fmt_dur }}</td>
+      <td class="mono">{{ (r.benchmark_sha or "—")[:10] }}{% if r.benchmark_dirty %} <span class="pill warn">dirty</span>{% endif %}</td>
+      <td class="mono">{{ (r.alamo_sha or "—")[:10] }}{% if r.alamo_dirty %} <span class="pill warn">dirty</span>{% endif %}</td>
+      <td>{{ r.config_mode }}</td>
+      <td class="num">{{ r.schema_version }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2 id="tool-versions">2. Tool versions</h2>
+<p class="section-desc">
+  Exact versions of every tool involved in benchmarking, captured by
+  <code>platform_info.collect</code> at run time. The compiler is the
+  per-OS vanilla toolchain: Apple Clang on macOS, LLVM clang on Linux --
+  both invoked via <code>$PATH</code> as <code>clang++</code>.
+</p>
+<details>
+  <summary>Raw data: per-machine tool-version matrix</summary>
+  <table>
+    <thead>
+      <tr>
+        <th>tool</th>
+        {% for m in machine_ids %}<th>{{ m }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+    {% for tool in tool_keys %}
+      <tr>
+        <td class="mono">{{ tool }}</td>
+        {% for b in bundles %}
+          <td class="mono">{{ b.host.tool_versions.get(tool, "—") }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+<h2 id="preflight">3. Pre-flight outcomes</h2>
+<p class="section-desc">
+  Every pre-flight check the benchmark performed before allowing the run.
+  Severity <code>required</code> aborts the run if it fails;
+  <code>advisory</code> is recorded but does not block.
+  <code>n/a</code> means the check doesn't apply to this OS (e.g.
+  <code>rapl_pl1</code> is Linux-only; <code>cpu_governor</code> is mode-only on macOS).
+</p>
+{% for pre in preflight_rows %}
+  <details>
+    <summary>{{ pre.machine_id }} -- overall <span class="pill {% if pre.passed %}ok{% else %}bad{% endif %}">{{ "PASS" if pre.passed else "FAIL" }}</span></summary>
+    <table>
+      <thead><tr><th>check</th><th>observed</th><th>required</th><th>severity</th><th>passed</th></tr></thead>
+      <tbody>
+      {% for c in pre.checks %}
+        <tr>
+          <td class="mono">{{ c.name }}</td>
+          <td class="mono">{{ c.observed }}</td>
+          <td class="mono">{{ c.required }}</td>
+          <td>{{ c.severity }}</td>
+          <td>{% if c.passed %}<span class="pill ok">yes</span>{% else %}<span class="pill bad">no</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+{% endfor %}
+
+<h2 id="noise-floor">4. Noise floor</h2>
+<p class="section-desc">
+  Twenty repetitions of a tight 4000x4000 numpy <code>matmul</code>; the
+  first rep is the warmup (excluded). This establishes the per-machine
+  per-night variance baseline that the other timings should be compared
+  against. Lower median = faster BLAS; smaller IQR = more stable machine.
+  Use the tab bar to switch between the cross-machine box plot and a
+  zoomed per-machine view (where each machine's y-axis is autoscaled to its
+  own data range so the within-machine variance is visible).
+</p>
+<div class="tabbar" data-tabgroup="noise-floor">
+  <button class="active" data-target="nf-overall">Overall</button>
+  {% for tab in noise_floor_tabs %}
+    <button data-target="nf-{{ loop.index }}">{{ tab.machine_id }}</button>
+  {% endfor %}
+</div>
+<div id="nf-overall" class="tab-panel active" data-tabgroup="noise-floor">
+  <figure>
+    <img src="{{ figs.noise_floor }}" alt="Noise floor box plot">
+    <figcaption>Box: Q1-Q3 (IQR), line: median, whiskers: full min/max range. Each machine's box represents its 19 measured reps. Machines ordered slowest -&gt; fastest by best SCP wall.</figcaption>
+  </figure>
+</div>
+{% for tab in noise_floor_tabs %}
+  <div id="nf-{{ loop.index }}" class="tab-panel" data-tabgroup="noise-floor">
+    {% if tab.fig %}
+      <figure>
+        <img src="{{ tab.fig }}" alt="Noise floor strip for {{ tab.machine_id }}">
+        <figcaption>{{ tab.machine_id }} -- 19 measured reps in measurement order. Dashed line = median; shaded band = IQR.</figcaption>
+      </figure>
+    {% else %}
+      <p>No noise_floor data for {{ tab.machine_id }}.</p>
+    {% endif %}
+  </div>
+{% endfor %}
+<details>
+  <summary>Raw data: noise-floor summary table</summary>
+  <table>
+    <thead><tr><th>machine</th><th class="num">n</th><th class="num">median (s)</th><th class="num">IQR (s)</th><th class="num">min (s)</th><th class="num">max (s)</th><th class="num">stdev (s)</th></tr></thead>
+    <tbody>
+    {% for r in noise_floor_table %}
+      <tr>
+        <td class="mono">{{ r.machine_id }}</td>
+        <td class="num">{{ r.n }}</td>
+        <td class="num">{{ r.median_s|fmt_float(4) }}</td>
+        <td class="num">{{ r.iqr_s|fmt_float(4) }}</td>
+        <td class="num">{{ r.min_s|fmt_float(4) }}</td>
+        <td class="num">{{ r.max_s|fmt_float(4) }}</td>
+        <td class="num">{{ r.stdev_s|fmt_float(4) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+<h2 id="compile">5. Compile benchmarks</h2>
+<p class="section-desc">
+  Cold-cache Alamo build, all configured dims (default: 2D + 3D) per rep.
+  <code>compile_serial</code> uses <code>make -j1</code>;
+  <code>compile_parallel</code> uses <code>make -j&lt;physical&gt;</code>.
+  Before each rep, the alamo submodule is wiped with <code>git clean -fdx -e .venv</code> +
+  <code>git checkout -- .</code>, and <code>CCACHE_DISABLE=1</code> is set.
+  Reps per benchmark: 2 measured + 1 warmup.
+</p>
+<figure>
+  <img src="{{ figs.compile }}" alt="Compile wall-time bars">
+  <figcaption>Median wall time per benchmark; error bars span Q1–Q3 (IQR) over the 2 measured reps.</figcaption>
+</figure>
+<table>
+  <thead>
+    <tr>
+      <th>machine</th>
+      <th class="num">serial median (s)</th>
+      <th class="num">serial IQR (s)</th>
+      <th class="num">parallel j</th>
+      <th class="num">parallel median (s)</th>
+      <th class="num">parallel IQR (s)</th>
+      <th class="num">speedup (serial / parallel)</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in compile_table %}
+    <tr>
+      <td class="mono">{{ r.machine_id }}</td>
+      <td class="num">{{ r.serial_median_s|fmt_float(1) }}</td>
+      <td class="num">{{ r.serial_iqr_s|fmt_float(1) }}</td>
+      <td class="num">{{ r.j or "—" }}</td>
+      <td class="num">{{ r.parallel_median_s|fmt_float(1) }}</td>
+      <td class="num">{{ r.parallel_iqr_s|fmt_float(1) }}</td>
+      <td class="num">{{ r.speedup|fmt_float(2) }}×</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2 id="regression">6. Regression suite</h2>
+<p class="section-desc">
+  Alamo's regression suite invoked via
+  <code>./scripts/runtests.py --comp clang++</code>; reps per benchmark:
+  2 measured + 1 warmup. {% if regression_skip_count %}{{ regression_skip_count }} test
+  section(s) are deliberately skipped on every machine for fairness — some
+  sections are known to fail erroneously on macOS (e.g. Voronoi /
+  ThermoElastic 2D tolerance issues), so they are skipped uniformly across
+  the fleet to keep the cross-platform comparison apples-to-apples. The
+  configured skip list is identical on every machine and is recorded under
+  <code>config.benchmarks.regression.skip_tests</code> in each run's
+  manifest. The skip directive is honored by <code>runtests.py</code> and
+  the skipped sections are reported in the per-rep notes column.{% endif %}
+</p>
+<figure>
+  <img src="{{ figs.regression }}" alt="Regression suite walls">
+  <figcaption>Per-rep walls (scatter, colored per machine) over the median bar (IQR error bars).</figcaption>
+</figure>
+<table>
+  <thead><tr><th>machine</th><th class="num">n</th><th class="num">median (s)</th><th class="num">IQR (s)</th><th class="num">min (s)</th><th class="num">max (s)</th><th>notes</th></tr></thead>
+  <tbody>
+  {% for r in regression_table %}
+    <tr>
+      <td class="mono">{{ r.machine_id }}</td>
+      <td class="num">{{ r.n }}</td>
+      <td class="num">{{ r.median_s|fmt_float(1) }}</td>
+      <td class="num">{{ r.iqr_s|fmt_float(1) }}</td>
+      <td class="num">{{ r.min_s|fmt_float(1) }}</td>
+      <td class="num">{{ r.max_s|fmt_float(1) }}</td>
+      <td>{{ r.notes }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2 id="scp-optimal">7. SCP elastic -- best per-machine wall time</h2>
+<p class="section-desc">
+  For each machine: the <code>np</code> value with the lowest median measured wall
+  time, presented in linear seconds for direct comparison. Each bar is labeled
+  on two lines: the optimal <code>np</code> on top, and the wall multiplier
+  relative to the fastest machine on the second line (e.g. <code>4.13x</code> =
+  "4.13 times slower than the fastest machine's best wall"). The fastest
+  machine reads <code>baseline</code>. Error bars are IQR over the 5 reps at
+  the optimal <code>np</code>. This is the metric used to order machines
+  throughout the report.
+</p>
+<figure>
+  <img src="{{ figs.scp_optimal }}" alt="SCP optimal-np wall time per machine">
+  <figcaption>Median wall time at each machine's optimal <code>np</code>. Linear y-axis. Order: slowest left, fastest right. Annotation: optimal <code>np</code> and slowdown multiplier vs the fastest machine.</figcaption>
+</figure>
+<details>
+  <summary>Raw data: optimal-np summary table</summary>
+  <table>
+    <thead>
+      <tr>
+        <th>machine</th>
+        <th class="num">optimal np</th>
+        <th class="num">reps</th>
+        <th class="num">median (s)</th>
+        <th class="num">IQR (s)</th>
+        <th class="num">min (s)</th>
+        <th class="num">max (s)</th>
+        <th class="num">multiplier vs fastest</th>
+        <th class="num">% slower than fastest</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in scp_optimal_table %}
+      <tr>
+        <td class="mono">{{ r.machine_id }}</td>
+        <td class="num">{{ r.optimal_np or "—" }}</td>
+        <td class="num">{{ r.reps }}</td>
+        <td class="num">{{ r.median_s|fmt_float(2) }}</td>
+        <td class="num">{{ r.iqr_s|fmt_float(2) }}</td>
+        <td class="num">{{ r.min_s|fmt_float(2) }}</td>
+        <td class="num">{{ r.max_s|fmt_float(2) }}</td>
+        <td class="num">{{ r.multiplier|fmt_float(2) }}x</td>
+        <td class="num">{% if r.pct_slower is not none %}+{{ r.pct_slower|fmt_float(1) }}%{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+<h2 id="geekbench">8. SCP elastic vs Geekbench prediction</h2>
+<p class="section-desc">
+  Geekbench 6 scores for each lab machine (operator-supplied, source-of-truth
+  in <code>benchmarks/report/geekbench.toml</code>) are joined against each
+  machine's measured SCP optimal-np median wall. A least-squares linear
+  regression in log space (<code>log(wall) = slope * log(score) + intercept</code>)
+  is fit separately to single-core and multi-core scores; both fits and their
+  R<sup>2</sup> are shown.
+  Machines listed under <code>[prospective]</code> in the TOML are evaluated
+  against the fit and shown as red star markers with their predicted SCP wall.
+</p>
+<figure>
+  <img src="{{ figs.geekbench }}" alt="SCP wall vs Geekbench score with prospective predictions">
+  <figcaption>
+    Log-log scatter, one panel per Geekbench axis. Filled circles = measured
+    machines, dashed line = fit, red star = prospective machine with
+    predicted SCP wall from the fit. Legend shows slope and R<sup>2</sup>
+    (1.0 = perfect fit; ~-1 slope ~ "wall is inversely proportional to
+    Geekbench score").
+  </figcaption>
+</figure>
+
+<h3>Fit summary</h3>
+<table>
+  <thead>
+    <tr>
+      <th>axis</th>
+      <th class="num">n</th>
+      <th class="num">slope</th>
+      <th class="num">intercept</th>
+      <th class="num">R<sup>2</sup></th>
+      <th class="num">score range</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for axis in ["single", "multi"] %}
+    {% set fit = geekbench_fits[axis] %}
+    <tr>
+      <td class="mono">{{ axis }}-core</td>
+      {% if fit %}
+        <td class="num">{{ fit.n }}</td>
+        <td class="num">{{ fit.slope|fmt_float(3) }}</td>
+        <td class="num">{{ fit.intercept|fmt_float(3) }}</td>
+        <td class="num">{{ fit.r_squared|fmt_float(3) }}</td>
+        <td class="num">{{ fit.score_min|fmt_float(0) }} -- {{ fit.score_max|fmt_float(0) }}</td>
+      {% else %}
+        <td class="num" colspan="5">insufficient data (need >= 2 known points)</td>
+      {% endif %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h3>Prospective-machine predictions</h3>
+<table>
+  <thead>
+    <tr>
+      <th>cpu</th>
+      <th class="num">single-core score</th>
+      <th class="num">multi-core score</th>
+      <th class="num">predicted wall (single fit)</th>
+      <th class="num">predicted wall (multi fit)</th>
+      <th>notes</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in geekbench_prospective %}
+    <tr>
+      <td class="mono">{{ r.cpu_label }}</td>
+      <td class="num">{{ r.single_core|fmt_float(0) }}</td>
+      <td class="num">{{ r.multi_core|fmt_float(0) }}</td>
+      <td class="num">{{ r.predicted_from_single_s|fmt_float(2) }} s</td>
+      <td class="num">{{ r.predicted_from_multi_s|fmt_float(2) }} s</td>
+      <td>{{ r.notes }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<details>
+  <summary>Raw data: known machines, actual vs predicted</summary>
+  <p class="section-desc">
+    For every machine that has both a measured SCP wall and a Geekbench score:
+    actual wall and what each fit would have predicted. The residual columns
+    are <code>(actual - predicted) / predicted * 100%</code>; a positive
+    number means this machine was slower than the fit expected; negative
+    means faster.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>machine</th>
+        <th>cpu</th>
+        <th class="num">single-core</th>
+        <th class="num">multi-core</th>
+        <th class="num">actual wall (s)</th>
+        <th class="num">predicted (single fit)</th>
+        <th class="num">residual (single)</th>
+        <th class="num">predicted (multi fit)</th>
+        <th class="num">residual (multi)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in geekbench_known %}
+      <tr>
+        <td class="mono">{{ r.machine_id }}</td>
+        <td class="mono">{{ r.cpu_label }}</td>
+        <td class="num">{{ r.single_core|fmt_float(0) }}</td>
+        <td class="num">{{ r.multi_core|fmt_float(0) }}</td>
+        <td class="num">{{ r.actual_wall_s|fmt_float(2) }}</td>
+        <td class="num">{{ r.predicted_from_single_s|fmt_float(2) }}</td>
+        <td class="num">{% if r.residual_single_pct is not none %}{% if r.residual_single_pct >= 0 %}+{% endif %}{{ r.residual_single_pct|fmt_float(1) }}%{% else %}—{% endif %}</td>
+        <td class="num">{{ r.predicted_from_multi_s|fmt_float(2) }}</td>
+        <td class="num">{% if r.residual_multi_pct is not none %}{% if r.residual_multi_pct >= 0 %}+{% endif %}{{ r.residual_multi_pct|fmt_float(1) }}%{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+<h2 id="scp">9. SCP elastic -- strong-scaling sweep</h2>
+<p class="section-desc">
+  <code>tests/SCPSpheresElastic/input</code> in 2D, <code>stop_time = 0.015s</code>.
+  Each machine sweeps <code>-np</code> over <code>1, 2, 4, 8, ..., physical, physical + virtual</code>
+  (de-duplicated). Reps per <code>np</code>: 5 measured + 1 warmup. Within a sweep, the run order is shuffled per
+  <code>random_seed</code> in the run config to defeat slow drift correlated with rep position.
+</p>
+<figure>
+  <img src="{{ figs.scp_wall }}" alt="SCP wall time vs np">
+  <figcaption>Median wall time vs MPI ranks (log-log). Error bars are IQR over the 5 measured reps per <code>np</code>. Legend ordered slowest -&gt; fastest by best wall.</figcaption>
+</figure>
+<figure>
+  <img src="{{ figs.scp_speedup }}" alt="SCP speedup">
+  <figcaption>Speedup = T(np_0) / T(np) where np_0 is each machine's smallest np. Dashed line: ideal linear scaling.</figcaption>
+</figure>
+<figure>
+  <img src="{{ figs.scp_efficiency }}" alt="SCP efficiency">
+  <figcaption>Parallel efficiency = speedup / np. Dashed line at 1.0 = ideal.</figcaption>
+</figure>
+
+{% for table in scp_sweep_tables %}
+  <details>
+    <summary>Raw data: SCP sweep -- {{ table.machine_id }}</summary>
+    <table>
+      <thead><tr><th class="num">np</th><th class="num">reps</th><th class="num">median (s)</th><th class="num">IQR (s)</th><th class="num">min (s)</th><th class="num">max (s)</th><th class="num">stdev (s)</th><th class="num">speedup vs base np</th><th class="num">efficiency</th></tr></thead>
+      <tbody>
+      {% for r in table.rows %}
+        <tr>
+          <td class="num">{{ r.np }}</td>
+          <td class="num">{{ r.reps }}</td>
+          <td class="num">{{ r.median_s|fmt_float(2) }}</td>
+          <td class="num">{{ r.iqr_s|fmt_float(2) }}</td>
+          <td class="num">{{ r.min_s|fmt_float(2) }}</td>
+          <td class="num">{{ r.max_s|fmt_float(2) }}</td>
+          <td class="num">{{ r.stdev_s|fmt_float(2) }}</td>
+          <td class="num">{{ r.speedup|fmt_float(2) }}x</td>
+          <td class="num">{{ r.efficiency|fmt_pct }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <figure>
+      <img src="{{ per_machine[table.machine_id].scp_strip }}" alt="SCP per-rep walls for {{ table.machine_id }}">
+      <figcaption>Per-rep wall time at each <code>np</code> for {{ table.machine_id }}; black tick is the median.</figcaption>
+    </figure>
+  </details>
+{% endfor %}
+
+<h2 id="scp-determinism">10. SCP output-hash determinism</h2>
+<p class="section-desc">
+  Each SCP rep records a decomposition-invariant SHA-256 over the final
+  cell plotfile (per-field counts + min/max quantized to 4 sig figs).
+  Two reps at the same <code>np</code> producing different hashes means
+  the run is not bit-deterministic on that machine. Hashes are presented
+  raw without further commentary; the first 12 hex characters per distinct
+  hash are shown.
+</p>
+{% for table in scp_hash_tables %}
+  <details>
+    <summary>{{ table.machine_id }} -- distinct-hash counts per np</summary>
+    <table>
+      <thead><tr><th class="num">np</th><th class="num">reps</th><th class="num">distinct hashes</th><th>hash prefixes</th></tr></thead>
+      <tbody>
+      {% for r in table.rows %}
+        <tr>
+          <td class="num">{{ r.np }}</td>
+          <td class="num">{{ r.reps }}</td>
+          <td class="num">{{ r.distinct }}</td>
+          <td class="mono">{{ r.hashes|join(", ") }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+{% endfor %}
+
+<h2 id="render-frames">11. Render frames</h2>
+<p class="section-desc">
+  <code>render_frames</code> uses yt's <code>SlicePlot</code> to render one
+  PNG per Alamo plotfile (the <code>eta</code> field as a z-slice, at the
+  configured resolution; default <code>1920×1080</code>). Reps per benchmark:
+  5 measured + 1 warmup. Input is the latest <code>scp_elastic</code> output
+  plotfile directory, so the input volume scales with each machine's largest-<code>np</code>
+  SCP output.
+</p>
+<figure>
+  <img src="{{ figs.render_frames }}" alt="render_frames bars">
+  <figcaption>Per-rep walls scatter over median bar (IQR error bars).</figcaption>
+</figure>
+<table>
+  <thead><tr><th>machine</th><th class="num">n</th><th class="num">median (s)</th><th class="num">IQR (s)</th><th class="num">min (s)</th><th class="num">max (s)</th></tr></thead>
+  <tbody>
+  {% for r in render_frames_table %}
+    <tr>
+      <td class="mono">{{ r.machine_id }}</td>
+      <td class="num">{{ r.n }}</td>
+      <td class="num">{{ r.median_s|fmt_float(2) }}</td>
+      <td class="num">{{ r.iqr_s|fmt_float(2) }}</td>
+      <td class="num">{{ r.min_s|fmt_float(2) }}</td>
+      <td class="num">{{ r.max_s|fmt_float(2) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2 id="render-encode">12. Render encode by codec</h2>
+<p class="section-desc">
+  Encoding the same rendered frame set with three codecs:
+  <code>gifski</code>, <code>libx265</code>, and <code>libsvtav1</code>.
+  Reps per (codec, machine): 5 measured + 1 warmup. The ffmpeg invocation
+  for x265/av1 includes a <code>pad=ceil(iw/2)*2:ceil(ih/2)*2</code> filter
+  to handle odd-dimension borders that <code>yuv420p</code> rejects.
+</p>
+<figure>
+  <img src="{{ figs.render_encode }}" alt="render_encode grouped bars">
+  <figcaption>Each codec along x; each machine has its own colored bar. Error bars: IQR.</figcaption>
+</figure>
+{% for table in render_encode_table %}
+  <details>
+    <summary>{{ table.machine_id }} -- per-codec encode walls</summary>
+    <table>
+      <thead><tr><th>codec</th><th class="num">n</th><th class="num">median (s)</th><th class="num">IQR (s)</th><th class="num">min (s)</th><th class="num">max (s)</th></tr></thead>
+      <tbody>
+      {% for r in table.rows %}
+        <tr>
+          <td class="mono">{{ r.codec }}</td>
+          <td class="num">{{ r.n }}</td>
+          <td class="num">{{ r.median_s|fmt_float(3) }}</td>
+          <td class="num">{{ r.iqr_s|fmt_float(3) }}</td>
+          <td class="num">{{ r.min_s|fmt_float(3) }}</td>
+          <td class="num">{{ r.max_s|fmt_float(3) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+{% endfor %}
+
+<h2 id="power-util">13. Combined telemetry: power and utilization</h2>
+<p class="section-desc">
+  Cross-machine views derived from 1 Hz telemetry. The power plot uses the
+  full run (entry to exit, including all cooldowns); the utilization plot
+  is restricted to the time windows of each machine's optimal-np SCP reps.
+  Machines ordered slowest -&gt; fastest by best SCP wall.
+  {% if power_compare_missing %}
+  Machines missing <code>package_power_w</code> samples were excluded
+  from the power plot: {{ power_compare_missing|join(", ") }}.
+  {% endif %}
+  {% if optimal_util_missing %}
+  Machines missing per-core <code>util_pct</code> were excluded
+  from the utilization plot: {{ optimal_util_missing|join(", ") }}.
+  {% endif %}
+</p>
+<figure>
+  <img src="{{ figs.power_compare }}" alt="Average and peak package power per machine">
+  <figcaption>Per-machine average and peak package power (W) over the full run. Numbers above each bar are the rounded value.</figcaption>
+</figure>
+<figure>
+  <img src="{{ figs.optimal_util }}" alt="Average per-core utilization during optimal SCP">
+  <figcaption>
+    Average per-core <code>util_pct</code> across every 1 Hz sample that falls
+    inside any measured SCP rep at each machine's optimal <code>np</code>.
+    Idle cores are included in the average -- e.g. on a 24-core box running
+    np=12, half the cores read ~0% util and pull the mean toward 50%.
+    Sub-label under each bar shows the optimal np and the machine's
+    (physical + virtual) core counts.
+  </figcaption>
+</figure>
+<details>
+  <summary>Raw data: combined telemetry table</summary>
+  <table>
+    <thead>
+      <tr>
+        <th>machine</th>
+        <th class="num">phys / virt</th>
+        <th class="num">optimal np</th>
+        <th class="num">optimal wall (s)</th>
+        <th class="num">avg power (W)</th>
+        <th class="num">peak power (W)</th>
+        <th class="num">avg per-core util at optimal (%)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in telemetry_combined_table %}
+      <tr>
+        <td class="mono">{{ r.machine_id }}</td>
+        <td class="num">{{ r.cores_physical }} / {{ r.cores_virtual }}</td>
+        <td class="num">{{ r.optimal_np or "—" }}</td>
+        <td class="num">{{ r.optimal_wall_s|fmt_float(2) }}</td>
+        <td class="num">{{ r.avg_power_w|fmt_float(2) }}</td>
+        <td class="num">{{ r.peak_power_w|fmt_float(2) }}</td>
+        <td class="num">{{ r.avg_util_optimal_pct|fmt_float(1) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+<h2 id="telemetry">14. Telemetry overview</h2>
+<p class="section-desc">
+  1 Hz hardware telemetry for the entire run, sourced from
+  <code>powermetrics --format plist</code> on macOS and
+  <code>turbostat --quiet</code> on Linux. Each machine's row of plots covers
+  the full <code>started_at</code>–<code>ended_at</code> window of its run;
+  vertical shaded bands mark the time range during which each benchmark
+  executed (band color → benchmark; see legend below).
+</p>
+<p class="section-desc">
+  <strong>Benchmark band legend:</strong>
+  noise_floor, compile_serial, compile_parallel, regression_suite,
+  scp_elastic, render_frames, render_encode — bands appear in the order
+  the benchmarks ran. Channels not collected on a given OS are skipped
+  silently and listed at the end of this section.
+</p>
+{% for b in bundles %}
+  <div class="machine-block">
+    <h3>{{ b.run.machine_id }} — {{ b.host.cpu_brand }}</h3>
+    {% set pm = per_machine[b.run.machine_id] %}
+    {% if pm.package_power_w %}<figure><img src="{{ pm.package_power_w }}" alt="{{ b.run.machine_id }} power"><figcaption>Package power (W). Downsampled to ≤1500 bins by median per bin.</figcaption></figure>{% endif %}
+    {% if pm.cpu_freq_avg_mhz %}<figure><img src="{{ pm.cpu_freq_avg_mhz }}" alt="{{ b.run.machine_id }} freq"><figcaption>Average and max core frequency (MHz). Downsampled to ≤1500 bins by median per bin.</figcaption></figure>{% endif %}
+    {% if pm.pkg_temp_c %}<figure><img src="{{ pm.pkg_temp_c }}" alt="{{ b.run.machine_id }} temp"><figcaption>Package temperature (°C). Downsampled to ≤1500 bins by median per bin.</figcaption></figure>{% endif %}
+    {% if pm.per_core_freq %}<figure><img src="{{ pm.per_core_freq }}" alt="{{ b.run.machine_id }} per-core freq"><figcaption>Per-core frequency heatmap. Cores grouped by type along Y (performance/super first, efficiency/virtual second).</figcaption></figure>{% endif %}
+    {% if pm.per_core_util %}<figure><img src="{{ pm.per_core_util }}" alt="{{ b.run.machine_id }} per-core util"><figcaption>Per-core utilization heatmap (0–100%).</figcaption></figure>{% endif %}
+    {% if pm.per_core_temp %}<figure><img src="{{ pm.per_core_temp }}" alt="{{ b.run.machine_id }} per-core temp"><figcaption>Per-core temperature heatmap. Linux/turbostat-only; cells are blank where the source did not report a temp.</figcaption></figure>{% endif %}
+  </div>
+{% endfor %}
+
+<h3>Channels with no data</h3>
+<table>
+  <thead><tr><th>machine</th><th>missing telemetry channels</th><th class="num">samples</th><th class="num">per-core samples</th><th class="num">timestamp offset applied (s)</th></tr></thead>
+  <tbody>
+  {% for c in telemetry_channels %}
+    {% set missing = c.channels.items()|selectattr("1", "equalto", false)|map(attribute=0)|list %}
+    <tr>
+      <td class="mono">{{ c.machine_id }}</td>
+      <td class="mono">{{ missing|join(", ") if missing else "—" }}</td>
+      <td class="num">{{ c.n_samples }}</td>
+      <td class="num">{{ c.n_per_core_samples }}</td>
+      <td class="num">{{ "%.0f"|format(c.telemetry_offset_seconds) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if macos_offset_machines %}
+<p class="footnote">
+  Methodology note on timestamp alignment: telemetry samples on
+  {{ macos_offset_machines|join(", ") }} were captured by
+  <code>powermetrics --format plist</code> whose timestamps are emitted in
+  local wall-clock labeled as UTC. To align them with the result-table
+  windows (which are recorded in true UTC by the runner), a fixed offset
+  rounded to the nearest minute was subtracted from every telemetry sample
+  on those machines; the offset is the column "timestamp offset applied"
+  above.
+</p>
+{% endif %}
+
+<h2 id="telemetry-zoom">15. Telemetry zoom: SCP optimal-np rep</h2>
+<p class="section-desc">
+  Per-machine, the per-core frequency time series during the optimal-<code>np</code>
+  SCP rep -- the rep that contributed to the machine's best-wall row in the
+  optimal-np section above. (Within the optimal-np bucket, the longest-walling
+  measured rep is shown so the time series is as wide as possible.) Useful for
+  inspecting whether all cores were pinned at high frequency throughout the
+  rep, or whether the OS scheduler migrated work across the perf/eff (or
+  physical/virtual) split. Where <code>turbostat</code> captured a package
+  temperature (Linux only), it is overlaid on a right-hand y-axis as a dashed
+  red line; <code>powermetrics</code> on macOS does not surface a package-temp
+  channel, so those plots show frequency only.
+</p>
+{% for b in bundles %}
+  {% set pm = per_machine[b.run.machine_id] %}
+  {% if pm.scp_zoom_freq %}
+  <figure>
+    <img src="{{ pm.scp_zoom_freq }}" alt="{{ b.run.machine_id }} SCP zoom">
+    <figcaption>{{ b.run.machine_id }} -- per-core MHz during optimal-np SCP rep.</figcaption>
+  </figure>
+  {% endif %}
+{% endfor %}
+
+<h2 id="telemetry-summary">16. Telemetry summary per benchmark</h2>
+<p class="section-desc">
+  For each benchmark on each machine, samples are joined to the
+  benchmark's start–end window (first measured rep start to last measured
+  rep end). Median package power, p95 of average and max core frequency,
+  p95 of package and per-core temperature, and median per-core
+  utilization are reported. <code>—</code> means the channel had no samples
+  on that platform; <code>0</code> means there were no samples in the
+  window (e.g. the run lasted less than one telemetry tick).
+</p>
+{% for row in telemetry_table %}
+  <details>
+    <summary>{{ row.machine_id }} -- per-benchmark telemetry summary</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>benchmark</th>
+          <th class="num">samples</th>
+          <th class="num">median power (W)</th>
+          <th class="num">p95 avg freq (MHz)</th>
+          <th class="num">p95 max freq (MHz)</th>
+          <th class="num">p95 pkg temp (&deg;C)</th>
+          <th class="num">p95 core temp (&deg;C)</th>
+          <th class="num">median per-core util (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for bench in row.benchmarks %}
+        <tr>
+          <td class="mono">{{ bench.benchmark }}</td>
+          <td class="num">{{ bench.samples }}</td>
+          <td class="num">{{ bench.median_power_w|fmt_float(2) }}</td>
+          <td class="num">{{ bench.p95_freq_mhz|fmt_float(0) }}</td>
+          <td class="num">{{ bench.p95_max_freq_mhz|fmt_float(0) }}</td>
+          <td class="num">{{ bench.p95_pkg_temp_c|fmt_float(1) }}</td>
+          <td class="num">{{ bench.p95_core_temp_c|fmt_float(1) }}</td>
+          <td class="num">{{ bench.median_util_pct|fmt_float(1) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+{% endfor %}
+
+<h2 id="appendix">17. Appendix -- raw data locations</h2>
+<p class="section-desc">
+  Where each machine's run lives in the repo and how big it is. Open any
+  <code>*.db</code> with <code>sqlite3</code> for ad-hoc queries (the
+  schema is documented in README.md "Data model").
+</p>
+<details>
+  <summary>Raw data: per-machine file paths and row counts</summary>
+  <table>
+    <thead>
+      <tr>
+        <th>machine</th>
+        <th>run_dir (relative)</th>
+        <th>db file</th>
+        <th class="num">db size</th>
+        <th class="num">result rows</th>
+        <th class="num">telemetry samples</th>
+        <th class="num">per-core samples</th>
+        <th class="num">schema</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in appendix_rows %}
+      <tr>
+        <td class="mono">{{ r.machine_id }}</td>
+        <td class="mono">{{ r.run_dir }}</td>
+        <td class="mono">{{ r.db_name }}</td>
+        <td class="num">{{ r.db_bytes|fmt_bytes }}</td>
+        <td class="num">{{ r.n_results }}</td>
+        <td class="num">{{ r.n_telemetry }}</td>
+        <td class="num">{{ r.n_per_core }}</td>
+        <td class="num">{{ r.schema_version }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>
+
+<script>
+// Tiny tab-bar handler: clicking a button in .tabbar swaps the visible
+// .tab-panel sharing the same data-tabgroup.
+(function () {
+  document.querySelectorAll(".tabbar").forEach(function (bar) {
+    var group = bar.dataset.tabgroup;
+    bar.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-target]");
+      if (!btn) return;
+      var target = btn.dataset.target;
+      bar.querySelectorAll("button").forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      document
+        .querySelectorAll('.tab-panel[data-tabgroup="' + group + '"]')
+        .forEach(function (p) {
+          p.classList.toggle("active", p.id === target);
+        });
+    });
+  });
+})();
+</script>
+</body>
+</html>

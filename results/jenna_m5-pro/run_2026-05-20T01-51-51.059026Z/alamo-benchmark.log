@@ -1,0 +1,39 @@
+2026-05-20T01:51:51.059Z INFO alamo-benchmark: alamo-benchmark run starting
+2026-05-20T01:51:51.059Z INFO alamo-benchmark:   run_id:     de74528b07e84c6bb15499c91efca93f
+2026-05-20T01:51:51.059Z INFO alamo-benchmark:   run_dir:    results/jenna_m5-pro/run_2026-05-20T01-51-51.059026Z
+2026-05-20T01:51:51.059Z INFO alamo-benchmark:   config:     configs/validate.toml
+2026-05-20T01:51:51.059Z INFO alamo-benchmark:   machine_id: jenna_m5-pro  (source: file)
+2026-05-20T01:51:51.059Z INFO alamo-benchmark:   hostname:   Mac
+2026-05-20T01:51:51.059Z INFO alamo-benchmark:   topology:   Fusion Architecture chip (Apple M5 Pro): 6 super cores treated as physical, 12 performance cores treated as virtual (secondary core class).
+2026-05-20T01:51:51.082Z INFO alamo-benchmark: Pre-flight: PASS
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] ac_power               plugged in                               (req: AC, advisory)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] cpu_governor           n/a                                      (req: any, advisory)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] turbo_boost            n/a (uncontrolled on macOS)              (req: on, advisory)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] rapl_pl1               n/a (no RAPL on macOS)                   (req: PL1 ~= max, advisory)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] load_average           1.22                                     (req: <= 4.0, required)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] disk_free              815.0 GB                                 (req: >= 5.0 GB, required)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] uptime                 0.0 days                                 (req: <= 365 days, advisory)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] required_tools         all present                              (req: clang++,mpiexec,make,git, required)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] sudo_cached            available                                (req: passwordless or pre-cached, advisory)
+2026-05-20T01:51:51.082Z INFO alamo-benchmark:   [OK ] alamo_clean            clean                                    (req: clean, required)
+2026-05-20T01:51:51.168Z INFO benchmarks.telemetry.macos: macOS telemetry started (powermetrics, 1000 ms interval)
+2026-05-20T01:51:51.168Z INFO alamo-benchmark: Starting noise_floor with 3 reps
+2026-05-20T01:51:51.168Z INFO alamo-benchmark:   noise_floor rep=0 config={'matmul_size': 4000} (warmup)
+2026-05-20T01:51:54.493Z INFO alamo-benchmark:   noise_floor rep=2 config={'matmul_size': 4000}
+2026-05-20T01:51:56.899Z INFO alamo-benchmark:   noise_floor rep=1 config={'matmul_size': 4000}
+2026-05-20T01:51:59.295Z INFO alamo-benchmark: Starting compile_serial with 1 reps
+2026-05-20T01:51:59.296Z INFO alamo-benchmark:   compile_serial rep=0 config={'j': 1, 'compiler': 'clang++', 'dims': [2]}
+2026-05-20T01:55:33.875Z INFO alamo-benchmark: Starting compile_parallel with 1 reps
+2026-05-20T01:55:33.876Z INFO alamo-benchmark:   compile_parallel rep=0 config={'j': 6, 'compiler': 'clang++', 'dims': [2]}
+2026-05-20T01:56:15.202Z INFO alamo-benchmark: Starting scp_elastic with 5 reps
+2026-05-20T01:56:15.202Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 18, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:56:48.496Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 6, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:57:09.277Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 1, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:58:05.106Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 2, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:58:40.787Z INFO alamo-benchmark:   scp_elastic rep=0 config={'np': 4, 'stop_time': '0.002_s', 'dim': 2}
+2026-05-20T01:59:04.505Z INFO alamo-benchmark: Starting render_frames with 1 reps
+2026-05-20T01:59:04.505Z INFO alamo-benchmark:   render_frames rep=0 config={'resolution': [640, 360], 'field': 'eta', 'axis': 'z'}
+2026-05-20T01:59:10.625Z INFO alamo-benchmark: Starting render_encode with 1 reps
+2026-05-20T01:59:10.626Z INFO alamo-benchmark:   render_encode rep=0 config={'codec': 'gifski', 'fps': 15}
+2026-05-20T01:59:12.754Z INFO benchmarks.telemetry.macos: macOS telemetry stopped
+2026-05-20T01:59:12.756Z INFO alamo-benchmark: Run complete. DB: results/jenna_m5-pro/run_2026-05-20T01-51-51.059026Z/run_2026-05-20T01-51-51.059026Z.db

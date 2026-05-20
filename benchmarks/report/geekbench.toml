@@ -1,0 +1,49 @@
+# Geekbench 6 scores for lab machines, supplied by the operator.
+#
+# Two top-level tables:
+#   [scores."<machine_id>"]  — for machines we have ALSO benchmarked end-to-end
+#                              (the report joins these against results/<machine_id>/).
+#   [prospective."<slug>"]   — machines we have NOT benchmarked but want a
+#                              predicted SCPSpheresElastic wall time for, via
+#                              the Geekbench-vs-SCP fit computed in the report.
+#
+# Missing entries (omit the key) → "unknown", excluded from the fit cleanly.
+# Add new machines by appending here; the report picks them up automatically.
+
+[scores."rowlf_xeon-e3-1240v6"]
+cpu_label = "Intel Xeon E3-1240 v6"
+single_core = 1422
+multi_core  = 4385
+
+[scores."pepe_intel-w-1370"]
+cpu_label = "Intel Xeon W-1370"
+single_core = 1997
+multi_core  = 8649
+
+[scores."kermit_xeon-w5-2545"]
+cpu_label = "Intel Xeon w5-2545"
+single_core = 2276
+multi_core  = 11583
+
+[scores."matthew_m1-pro"]
+cpu_label = "Apple M1 Pro (10 cores)"
+single_core = 2386
+multi_core  = 12356
+
+[scores."lucy_m4-pro"]
+cpu_label = "Apple M4 Pro (12 cores)"
+single_core = 3854
+multi_core  = 20313
+
+[scores."jenna_m5-pro"]
+cpu_label = "Apple M5 Pro (18 cores)"
+# Median of 125 Geekbench Browser uploads for Mac17,8, scraped via
+# scripts/scrape_geekbench.py. Tight distribution: IQR 92 / 844.
+single_core = 4274
+multi_core  = 28662
+
+[prospective."intel-core-ultra-7-265"]
+cpu_label = "Intel Core Ultra 7 265"
+single_core = 3063
+multi_core  = 20514
+notes = "In a currently inaccessible room; SCP wall predicted from the Geekbench-vs-SCP fit."

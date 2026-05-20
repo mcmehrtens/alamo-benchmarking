@@ -46,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_describe(args)
     if cmd == "dry-run":
         return _cmd_dry_run(args)
+    if cmd == "report":
+        return _cmd_report(args)
     parser.print_help()
     return 2
 
@@ -87,6 +89,23 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_dry = sub.add_parser("dry-run", help="Show what `run` would execute.")
     _add_config_args(p_dry)
+
+    p_report = sub.add_parser(
+        "report",
+        help="Generate an HTML report from committed per-machine result DBs.",
+    )
+    p_report.add_argument(
+        "--results-dir",
+        type=Path,
+        default=Path("results"),
+        help="Root of per-machine result dirs (default: ./results).",
+    )
+    p_report.add_argument(
+        "--out",
+        type=Path,
+        default=Path("report"),
+        help="Output directory for index.html + figures/ (default: ./report).",
+    )
     return parser
 
 
@@ -224,6 +243,21 @@ def _cmd_dry_run(args: argparse.Namespace) -> int:
         warmup_n = sum(1 for s in specs if s.is_warmup)
         print(f"  - {name}: {len(specs)} reps ({warmup_n} warmup)")
     print(f"\nTotal reps: {total_reps}")
+    return 0
+
+
+# ----------------------------------------------------------- report
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    # Deferred import: matplotlib + jinja2 are heavy and only needed for `report`.
+    from benchmarks.report.render import build_report  # noqa: PLC0415
+
+    paths = build_report(
+        results_root=args.results_dir.resolve(),
+        out_dir=args.out.resolve(),
+    )
+    print(f"Report written to {paths.index_html}")
     return 0
 
 
