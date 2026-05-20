@@ -47,3 +47,21 @@ cpu_label = "Intel Core Ultra 7 265"
 single_core = 3063
 multi_core  = 20514
 notes = "In a currently inaccessible room; SCP wall predicted from the Geekbench-vs-SCP fit."
+
+[prospective."mac-studio-2025-m4-max"]
+cpu_label = "Mac Studio 2025 — Apple M4 Max (16 CPU)"
+single_core = 4032
+multi_core  = 26210
+notes = "Prospective lab purchase; SCP wall predicted from the Geekbench-vs-SCP fit."
+
+[prospective."mac-studio-2025-m3-ultra"]
+cpu_label = "Mac Studio 2025 — Apple M3 Ultra (32 CPU)"
+single_core = 3202
+multi_core  = 27811
+notes = "Prospective lab purchase; SCP wall predicted from the Geekbench-vs-SCP fit."
+
+[prospective."mac-mini-2024-m4-pro"]
+cpu_label = "Mac Mini 2024 — Apple M4 Pro (14 CPU)"
+single_core = 3821
+multi_core  = 22425
+notes = "Prospective lab purchase; SCP wall predicted from the Geekbench-vs-SCP fit."

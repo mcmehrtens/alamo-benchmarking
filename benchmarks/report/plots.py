@@ -486,15 +486,23 @@ def draw_geekbench_correlation(
     line in log space. Machine identity is encoded in the per-point color
     (consistent with the rest of the report's palette) plus a shared
     legend below the figure -- inline per-point labels would overlap when
-    two machines have similar scores. Prospective machines get a red star
-    with a leader-line callout showing the predicted SCP wall in seconds.
+    two machines have similar scores. Prospective machines get a star
+    marker, one distinct color per machine; the predicted SCP walls are
+    shown in the accompanying table rather than inline on the plot, since
+    multiple clustered prospectives would make leader-line callouts
+    overlap.
     """
-    fig, axes = plt.subplots(1, 2, figsize=(11.0, 5.6), dpi=_DPI)
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 6.0), dpi=_DPI)
     fits: dict[str, LogLogFit | None] = {}
     panel_specs = [
         ("single", "Geekbench single-core score"),
         ("multi", "Geekbench multi-core score"),
     ]
+    # Distinct colors for prospective stars. Chosen to be visually
+    # separable from the standard machine palette (which leans on tab10
+    # blues / greens / earth tones); these are warm/magenta/purple tones
+    # that read as "predicted" at a glance.
+    prospective_colors = ["#d62728", "#9467bd", "#ff7f0e", "#e377c2", "#17becf", "#8c564b"]
     for ax_idx, (axis_key, x_label) in enumerate(panel_specs):
         ax = axes[ax_idx]
         known = _collect_known_points(bundles, geekbench, axis_key)
@@ -519,41 +527,22 @@ def draw_geekbench_correlation(
 
         if fit is not None:
             x_lo, x_hi = fit.score_min, fit.score_max
-            for p in geekbench.prospective:
+            for idx, p in enumerate(geekbench.prospective):
                 score_val = p.single_core if axis_key == "single" else p.multi_core
                 if score_val is None or score_val <= 0:
                     continue
                 pred = fit.predict(score_val)
+                color = prospective_colors[idx % len(prospective_colors)]
                 ax.scatter(
                     score_val,
                     pred,
-                    color="#d62728",
+                    color=color,
                     marker="*",
-                    s=260,
+                    s=240,
                     edgecolor="#222",
                     linewidth=0.7,
                     zorder=5,
                     label=f"{p.cpu_label} (predicted)" if ax_idx == 0 else None,
-                )
-                # Leader-line callout for the predicted wall. The offset is
-                # large enough to clear nearby known dots even when the
-                # prospective machine's score lands right on top of one
-                # (e.g. Intel Core Ultra 7 265 multi ~= lucy_m4-pro multi).
-                ax.annotate(
-                    f"{pred:.1f} s",
-                    xy=(score_val, pred),
-                    xytext=(34, 22),
-                    textcoords="offset points",
-                    fontsize=10,
-                    fontweight="bold",
-                    color="#a00",
-                    arrowprops={
-                        "arrowstyle": "->",
-                        "color": "#a00",
-                        "lw": 0.9,
-                        "shrinkA": 2,
-                        "shrinkB": 4,
-                    },
                 )
                 x_lo = min(x_lo, score_val)
                 x_hi = max(x_hi, score_val)
@@ -590,13 +579,18 @@ def draw_geekbench_correlation(
 
     # Shared legend below both panels. Pulled from the first panel so the
     # ordering follows the canonical machine order (bundles arg is
-    # pre-sorted worst -> best by SCP optimal wall).
+    # pre-sorted worst -> best by SCP optimal wall); prospective entries
+    # come after the known machines (loop order in the panel build).
+    # Prospective labels can be quite long ("Mac Studio 2025 — Apple M3
+    # Ultra (32 CPU) (predicted)") so we cap at 3 columns to keep each
+    # column wide enough to fit the longest label without wrapping.
     handles, labels = axes[0].get_legend_handles_labels()
+    n_cols = min(3, max(1, len(handles)))
     fig.legend(
         handles,
         labels,
         loc="lower center",
-        ncol=min(4, max(1, len(handles))),
+        ncol=n_cols,
         frameon=False,
         fontsize=8,
         bbox_to_anchor=(0.5, -0.02),
@@ -605,10 +599,15 @@ def draw_geekbench_correlation(
 
     # Custom save: standard _save() doesn't leave room for the below-figure
     # legend. tight_layout packs the axes; bbox_inches='tight' on savefig
-    # expands the saved bounding box to include the legend.
+    # expands the saved bounding box to include the legend. The bottom
+    # reservation (rect[1]) scales with the number of legend rows so 4
+    # prospectives + 6 known machines (4 rows at 3 cols) doesn't crash
+    # into the x-axis.
+    n_rows = (len(handles) + n_cols - 1) // n_cols
+    bottom_pad = 0.04 + 0.035 * n_rows
     out_dir.mkdir(parents=True, exist_ok=True)
     target = out_dir / "geekbench_correlation.svg"
-    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.tight_layout(rect=(0, bottom_pad, 1, 1))
     fig.savefig(target, format="svg", transparent=True, bbox_inches="tight")
     plt.close(fig)
     return "figures/geekbench_correlation.svg", fits
